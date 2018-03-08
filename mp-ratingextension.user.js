@@ -20,13 +20,13 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       2.18
+// @version       2.18.1
 // @downloadURL   https://github.com/kevgaar/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
 // @include       https://www.moviepilot.de/movies/*
 // @exclude       https://www.moviepilot.de/movies/*/*
-// @grant         GM_xmlhttpRequest
+// @grant         GM.xmlHttpRequest
 
 // ==/UserScript==
 //debugger;
@@ -984,7 +984,7 @@ function Rating () {
         * source       Anzeige-Information
         */
                 if (this.REQ_SYNCHRONOUS) {  //synchronous or asynchronous
-                        var response = GM_xmlhttpRequest({
+                        var response = GM.xmlHttpRequest({
                         	method: 'GET',
                         	url: request,
                         	synchronous: this.REQ_SYNCHRONOUS,
@@ -997,7 +997,7 @@ function Rating () {
                         	alert("Error: No synchornous operation.");
                         }
                 } else {
-                        GM_xmlhttpRequest({
+                        GM.xmlHttpRequest({
                                 method: 'GET',
                                 url: request,
                                 synchronous: this.REQ_SYNCHRONOUS,
