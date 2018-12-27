@@ -20,13 +20,14 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       2.20.2
+// @version       2.20.1
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
 // @include       https://www.moviepilot.de/movies/*
 // @exclude       https://www.moviepilot.de/movies/*/*
 // @grant         GM.xmlHttpRequest
+// ==/UserScript==
 
 //-------Constants---------------
 //Div-Names from every single rating. Used to show/hide the ratings via a checkbox
