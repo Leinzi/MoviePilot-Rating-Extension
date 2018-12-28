@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       2.20.3
+// @version       3.0.0
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -47,40 +47,26 @@ var DEBUG_MODE = false;
 var VERBOSE = true;
 //------/Constants---------------
 
+class Pattern {
+
+  constructor(searchValue, newValue) {
+    this._searchValue = searchValue
+    this._newValue = newValue
+  }
+
+  get searchValue() { return this._searchValue }
+  set searchValue(value) { this._searchValue = value }
+
+  get newValue() { return this._newValue }
+  set newValue(value) { this._newValue = value }
+
+  get regExp() {
+    regExp: new RegExp(this.searchValue, "g")
+  }
+}
+
 class Refinery {
 /* Collection of methods to refine several types of character sequences */
-
-  static get pattern() {
-    let pattern = [
-      { searchValue: "%E2%80%93", newValue: '-', regExp: new RegExp("%E2%80%93", "g") },
-      { searchValue: "%25E2%2580%2593", newValue: '-', regExp: new RegExp("%25E2%2580%2593", "g") },
-      { searchValue: "%3C", newValue: '<', regExp: new RegExp("%3C", "g") },
-      { searchValue: "%3E", newValue: '>', regExp: new RegExp("%3E", "g") },
-      { searchValue: "%22", newValue: '"', regExp: new RegExp("%22", "g") },
-      { searchValue: "%20", newValue: ' ', regExp: new RegExp("%20", "g") },
-      { searchValue: "&#x27;", newValue: "'", regExp: new RegExp("&#x27;", "g") },
-      { searchValue: "&#39;", newValue: "'", regExp: new RegExp("&#39;", "g") },
-
-      { searchValue: "%C3%84", newValue: 'Ä', regExp: new RegExp("%C3%84", "g") }, //%C4|&Auml;|&#196;|
-      { searchValue: "%C3%A4", newValue: 'ä', regExp: new RegExp("%C3%A4", "g") }, //%E4|&auml;|&#228;|
-      { searchValue: "%C3%96", newValue: 'Ö', regExp: new RegExp("%C3%96", "g") }, //%D6|&Ouml;|&#214;|
-      { searchValue: "%C3%B6", newValue: 'ö', regExp: new RegExp("%C3%B6", "g") }, //%F6|&ouml;|&#246;|
-      { searchValue: "%C3%9C", newValue: 'Ü', regExp: new RegExp("%C3%9C", "g") }, //%DC|&Uuml;|&#220;|
-      { searchValue: "%C3%BC", newValue: 'ü', regExp: new RegExp("%C3%BC", "g") }, //%FC|&uuml;|&#252;|
-
-      { searchValue: "%C3%81", newValue: "Á", regExp: new RegExp("%C3%81", "g") },
-      { searchValue: "%C3%A1", newValue: "á", regExp: new RegExp("%C3%A1", "g") },
-      { searchValue: "%C3%89", newValue: "É", regExp: new RegExp("%C3%89", "g") },
-      { searchValue: "%C3%A9", newValue: "é", regExp: new RegExp("%C3%A9", "g") },
-      { searchValue: "%C3%8D", newValue: "Í", regExp: new RegExp("%C3%8D", "g") },
-      { searchValue: "%C3%AD", newValue: "í", regExp: new RegExp("%C3%AD", "g") },
-      { searchValue: "%C3%93", newValue: "Ó", regExp: new RegExp("%C3%93", "g") },
-      { searchValue: "%C3%B3", newValue: "ó", regExp: new RegExp("%C3%B3", "g") },
-      { searchValue: "%C3%9A", newValue: "Ú", regExp: new RegExp("%C3%9A", "g") },
-      { searchValue: "%C3%BA", newValue: "ú", regExp: new RegExp("%C3%BA", "g") },
-    ]
-    return pattern;
-  }
 
   static refineTitle(title) {
     /* Refine movie titles of MP */
@@ -154,6 +140,35 @@ class Refinery {
   };
 
 }
+
+Refinery.pattern = [
+  new Pattern("%E2%80%93", '-'),
+  new Pattern("%25E2%2580%2593",'-'),
+  new Pattern("%3C",'<'),
+  new Pattern("%3E",'>'),
+  new Pattern("%22",'"'),
+  new Pattern("%20",' '),
+  new Pattern("&#x27;","'"),
+  new Pattern("&#39;","'"),
+
+  new Pattern("%C3%84",'Ä'), //%C4|&Auml;|&#196;|
+  new Pattern("%C3%A4",'ä'), //%E4|&auml;|&#228;|
+  new Pattern("%C3%96",'Ö'), //%D6|&Ouml;|&#214;|
+  new Pattern("%C3%B6",'ö'), //%F6|&ouml;|&#246;|
+  new Pattern("%C3%9C",'Ü'), //%DC|&Uuml;|&#220;|
+  new Pattern("%C3%BC",'ü'), //%FC|&uuml;|&#252;|
+
+  new Pattern("%C3%81","Á"),
+  new Pattern("%C3%A1","á"),
+  new Pattern("%C3%89","É"),
+  new Pattern("%C3%A9","é"),
+  new Pattern("%C3%8D","Í"),
+  new Pattern("%C3%AD","í"),
+  new Pattern("%C3%93","Ó"),
+  new Pattern("%C3%B3","ó"),
+  new Pattern("%C3%9A","Ú"),
+  new Pattern("%C3%BA","ú"),
+]
 
 // var Refinery = new Refinery();
 var MPRatingFactory = new MPRatingFactory();
