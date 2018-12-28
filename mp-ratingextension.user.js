@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.1.1
+// @version       3.1.2
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -46,6 +46,49 @@ var C_ID_WIKIINFO = 'wikiInfo';
 var DEBUG_MODE = true;
 var VERBOSE = true;
 //------/Constants---------------
+
+//-------Helper---------------
+/**
+ * Regular Expression IndexOf for Arrays
+ * This little addition to the Array prototype will iterate over array
+ * and return the index of the first element which matches the provided
+ * regular expression.
+ * Note: This will not match on objects.
+ * @param  {RegEx}   rx The regular expression to test with. E.g. /-ba/gim
+ * @return {Numeric} -1 means not found
+ */
+if (typeof Array.prototype.reIndexOf === 'undefined') {
+  Array.prototype.reIndexOf = function (rx) {
+    for (var i in this) {
+      if (this[i].toString().match(rx)) {
+        return i;
+      }
+    }
+    return -1;
+  };
+}
+
+/* Search an array of string for a regular expression */
+/**
+ * Regular Expression match for Arrays
+ * This little addition to the Array prototype will iterate over array
+ * and return the presence of an element matching the provided
+ * regular expression.
+ * Note: This will not match on objects.
+ * @param  {RegEx}   rx The regular expression to test with. E.g. /-ba/gim
+ * @return {Boolean}
+ */
+if (typeof Array.prototype.reMatch === 'undefined') {
+  Array.prototype.reMatch = function (rx) {
+    for (var i in this) {
+      if (this[i].toString().match(rx)) {
+        return true;
+      }
+    }
+    return false;
+  };
+}
+//-------/Helper---------------
 
 class Pattern {
 
@@ -959,33 +1002,13 @@ function MPExtension() {
 }
 
 /**
- * Regular Expresion IndexOf for Arrays
- * This little addition to the Array prototype will iterate over array
- * and return the index of the first element which matches the provided
- * regular expresion.
- * Note: This will not match on objects.
- * @param  {RegEx}   rx The regular expression to test with. E.g. /-ba/gim
- * @return {Numeric} -1 means not found
- */
-if (typeof Array.prototype.reIndexOf === 'undefined') {
-  Array.prototype.reIndexOf = function (rx) {
-    for (var i in this) {
-      if (this[i].toString().match(rx)) {
-        return i;
-      }
-    }
-    return -1;
-  };
-}
-
-/**
  * Adds a string at the highest index of an array
  * of unique strings (simple JavaScript push),
  * if the string isn't found in it
  */
 function appendStringToSet(array, string) {
   var regEx = new RegExp("^" + string + "$", "i");
-  if (!matchInArray(array, regEx)) {
+  if (!array.reMatch(regEx)) {
     array.push(string);
   }
 }
@@ -996,7 +1019,7 @@ function appendStringToSet(array, string) {
  */
 function prependStringToSet(array, string){
   var regEx = new RegExp("^" + string + "$", "i");
-  if (!matchInArray(array, regEx)) {
+  if (!array.reMatch(regEx)) {
     array.unshift(string);
   }
 }
@@ -1011,12 +1034,6 @@ function moveStringToFirstPosition(array, string) {
     array[i-1] = swap;
   }
 }
-
-/* Search an array of string for a regular expression */
-function matchInArray(array, expression) {
-  return array.reIndexOf(expression) !== -1;
-}
-
 
 function Rating () {
         /* Rating class
@@ -1207,7 +1224,7 @@ function Rating () {
                                         // Heuristic - at least half of the movie titles words have to be found in a result
                                         for(var i = 0; i < movieAliasSplits.length; i++) {
                                                 var regExp = new RegExp('(^|\\s|>)'+movieAliasSplits[i]+'(\\s|$)', 'i');
-                                                if(matchInArray(titleSplits, regExp) || (SEARCH_GOOGLE_RESULT_INFO && infoDiv.search(regExp) >= 0)) {
+                                                if(titleSplits.reMatch(regExp) || (SEARCH_GOOGLE_RESULT_INFO && infoDiv.search(regExp) >= 0)) {
                                                         foundCounter++;
                                                 }
                                         }
