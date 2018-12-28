@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.1.2
+// @version       3.1.3
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -68,7 +68,6 @@ if (typeof Array.prototype.reIndexOf === 'undefined') {
   };
 }
 
-/* Search an array of string for a regular expression */
 /**
  * Regular Expression match for Arrays
  * This little addition to the Array prototype will iterate over array
@@ -1017,7 +1016,7 @@ function appendStringToSet(array, string) {
  * Pushes a string to index 0 of an array of unique strings,
  * if the string isn't found in it
  */
-function prependStringToSet(array, string){
+function prependStringToSet(array, string) {
   var regEx = new RegExp("^" + string + "$", "i");
   if (!array.reMatch(regEx)) {
     array.unshift(string);
