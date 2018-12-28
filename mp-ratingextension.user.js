@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.1.3
+// @version       3.2.0
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -250,10 +250,7 @@ class MPRatingFactory {
     var wrapper = document.createElement('div');
     wrapper.id = id;
     wrapper.className = "criticscount";
-    wrapper.style.width = "180px";
-    wrapper.style.margin = "0px 25px 0px 25px";
-    wrapper.style.padding = "0px";
-    wrapper.style.float = "left";
+    styleWrapper(wrapper)
 
     if (getInfoFromLocalStorage(id)) {
       wrapper.style.display = 'inline';
@@ -268,11 +265,7 @@ class MPRatingFactory {
     var valueSpan = document.createElement('span');
     valueSpan.className = "huge";
     valueSpan.innerHTML = value;
-    valueSpan.style.width = "35px";
-    valueSpan.style.margin = "10px 3px 0px 0px";
-    valueSpan.style.padding = "0px";
-    valueSpan.style.float = "left";
-    valueSpan.style.textAlign = "center";
+    styleValueElement(valueSpan);
     return valueSpan;
   }
 
@@ -611,55 +604,34 @@ function MPExtension() {
                 return true;
         };
 
-        function fixMPLayout() {
-        /* Modifies MPs structure - all ratings have to look alike... */
-                var userAction = document.getElementsByClassName('movie_user_action')[0];
-                var criticsCount = document.getElementsByClassName('criticscount')[0];
-                var contentCount = document.getElementsByClassName('contentcount')[0];
-                var huge = document.getElementsByClassName('huge');
-                var quite = document.getElementsByClassName('quite');
+  /* Modifies MPs structure - all ratings have to look alike... */
+  function fixMPLayout() {
+    var userAction = document.getElementsByClassName('movie_user_action');
+    var criticsCount = document.getElementsByClassName('criticscount');
+    var contentCount = document.getElementsByClassName('contentcount');
+    var huge = document.getElementsByClassName('huge');
+    var quite = document.getElementsByClassName('quite');
 
-                if(userAction === null || criticsCount === null || contentCount === null || huge === null || quite === null) {
-                        if(DEBUG_MODE) {
-                                console.log("MP-R-Ext: Function fixMPLayout. Structure changed.");
-                        }
-                        return false;
-                }
+    if (userAction === null || criticsCount === null || contentCount === null || huge === null || quite === null) {
+      if (DEBUG_MODE) {
+        console.log("MP-R-Ext: Function fixMPLayout. Structure changed.");
+      }
+      return false;
+    }
 
-                userAction.style.width   = "180px";
-                userAction.style.margin  = "0px 25px 0px 25px";
-                userAction.style.padding = "0px";
-                userAction.style.float   = "left";
+    for (var wrapper of userAction) { styleWrapper(wrapper) }
 
-                criticsCount.style.width   = "180px";
-                criticsCount.style.margin  = "0px 25px 0px 25px";
-                criticsCount.style.padding = "0px";
-                criticsCount.style.float   = "left";
+    for (var wrapper of criticsCount) {
+      styleWrapper(wrapper)
+      wrapper.children[1].replaceChild(document.createTextNode("Kritiker"), wrapper.children[1].childNodes[0]);
+    }
 
+    for (var wrapper of contentCount) { styleWrapper(wrapper) }
+    for (var element of huge) { styleValueElement(element) }
+    for (var element of quite) { styleQuiteElement(element) }
 
-                criticsCount.children[1].replaceChild(document.createTextNode("Kritiker"), criticsCount.children[1].childNodes[0]);
-
-                contentCount.style.width   = "180px";
-                contentCount.style.margin  = "0px 25px 0px 25px";
-                contentCount.style.padding = "0px";
-                contentCount.style.float   = "left";
-
-                for (i = 0; i < huge.length; i++) {
-                        huge[i].style.width   = "35px";
-                        huge[i].style.margin  = "10px 3px 0px 0px";
-                        huge[i].style.padding = "0px";
-                        huge[i].style.float   = "left";
-                        huge[i].style.textAlign   = "center";
-                }
-
-                for (i = 0; i < quite.length; i++) {
-                        quite[i].style.margin  = "0px";
-                        quite[i].style.padding = "0px";
-                        quite[i].style.float   = "left";
-                }
-
-                return true;
-        }
+    return true;
+  }
 
         this.addTitleToMP = function(title) {
                 var titlesTooltip = document.querySelector("#titlesTooltip")
@@ -1471,7 +1443,26 @@ function tmdbRatingScrapper(tmdbResponse, estCorrectness) {
 }
 
 
+function styleWrapper(wrapper) {
+  wrapper.style.width = "180px";
+  wrapper.style.margin = "0px 25px 0px 25px";
+  wrapper.style.padding = "0px";
+  wrapper.style.float = "left";
+}
 
+function styleValueElement(element) {
+  element.style.width = "35px";
+  element.style.margin = "10px 3px 0px 0px";
+  element.style.padding = "0px";
+  element.style.float = "left";
+  element.style.textAlign = "center";
+}
+
+function styleQuiteElement(element) {
+  element.style.margin  = "0px";
+  element.style.padding = "0px";
+  element.style.float = "left";
+}
 //-----LOCALSTORAGE-ADAPTER------------
 /* To store some binary information */
 
