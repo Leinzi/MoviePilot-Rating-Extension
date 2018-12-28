@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.0.0
+// @version       3.0.2
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -124,8 +124,8 @@ class Refinery {
   static encode(string) {
     /* translate known characters to patterns (unicode/UTF-8/...)  */
     var encodedString = string;
-    for (var i = 0; i < Refinery.pattern.length; i++) {
-      encodedString = encodedString.replace(Refinery.pattern[i].newValue, Refinery.pattern[i]. searchValue);
+    for (var pattern of Refinery.pattern) {
+      encodedString = encodedString.replace(pattern.newValue, pattern.searchValue);
     }
     return encodedString;
   }
@@ -133,12 +133,11 @@ class Refinery {
   static decode(string) {
     /* translate patterns (unicode/UTF-8/...) to known characters */
     var decodedString = string;
-    for (var i = 0; i < Refinery.pattern.length; i++) {
-      decodedString = decodedString.replace(Refinery.pattern[i].regExp, Refinery.pattern[i].newValue);
+    for (var pattern of Refinery.pattern) {
+      decodedString = decodedString.replace(pattern.regExp, pattern.newValue);
     }
     return decodedString;
   };
-
 }
 
 Refinery.pattern = [
