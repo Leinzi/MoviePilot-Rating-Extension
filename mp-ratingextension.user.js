@@ -61,7 +61,7 @@ class Pattern {
   set newValue(value) { this._newValue = value }
 
   get regExp() {
-    regExp: new RegExp(this.searchValue, "g")
+    return new RegExp(this.searchValue, "g")
   }
 }
 
