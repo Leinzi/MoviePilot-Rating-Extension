@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       2.20.1
+// @version       2.20.3
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -904,7 +904,7 @@ function Rating () {
                 }
 
                 var googleResponse = parseToHTMLElement(response.responseText);
-                var googleResults = googleResponse.getElementsByClassName("g", 5);
+                var googleResults = googleResponse.querySelectorAll("div.g > div > div.rc > div.r > a");
                 var bestResult = getBestGoogleResult(googleResults);
 
                 if(bestResult !== null) {
@@ -988,9 +988,10 @@ function Rating () {
                 }
 
                 for(var k = 0; k < googleResults.length && k < numberOfResultsIncluded; k++) {
-                        var currentResult = googleResults[k];
-                        var link = currentResult.getElementsByTagName("a")[0];
-                        var title = link.innerHTML;
+                        var link = googleResults[k];
+                        var headline = link.querySelector("h3");
+                        if (headline === null) {continue;}
+                        var title = link.querySelector("h3").innerHTML;
                         var url = link.href;
                         var infoDiv = "";
 
@@ -1062,7 +1063,7 @@ function Rating () {
                         } else if(indicator >= 0.25) {
                 	        estCorrectness = Rating.correctness.BAD;
                         }
-                        return [googleResults[bestResultIndex].getElementsByTagName("a")[0].href, googleResults[bestResultIndex]];
+                        return [googleResults[bestResultIndex].href, googleResults[bestResultIndex]];
                 } else {
                         return null;
                 }
