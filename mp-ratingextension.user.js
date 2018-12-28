@@ -47,7 +47,115 @@ var DEBUG_MODE = false;
 var VERBOSE = true;
 //------/Constants---------------
 
-var Refinery = new Refinery();
+class Refinery {
+/* Collection of methods to refine several types of character sequences */
+
+  static get pattern() {
+    let pattern = [
+      { searchValue: "%E2%80%93", newValue: '-', regExp: new RegExp("%E2%80%93", "g") },
+      { searchValue: "%25E2%2580%2593", newValue: '-', regExp: new RegExp("%25E2%2580%2593", "g") },
+      { searchValue: "%3C", newValue: '<', regExp: new RegExp("%3C", "g") },
+      { searchValue: "%3E", newValue: '>', regExp: new RegExp("%3E", "g") },
+      { searchValue: "%22", newValue: '"', regExp: new RegExp("%22", "g") },
+      { searchValue: "%20", newValue: ' ', regExp: new RegExp("%20", "g") },
+      { searchValue: "&#x27;", newValue: "'", regExp: new RegExp("&#x27;", "g") },
+      { searchValue: "&#39;", newValue: "'", regExp: new RegExp("&#39;", "g") },
+
+      { searchValue: "%C3%84", newValue: 'Ä', regExp: new RegExp("%C3%84", "g") }, //%C4|&Auml;|&#196;|
+      { searchValue: "%C3%A4", newValue: 'ä', regExp: new RegExp("%C3%A4", "g") }, //%E4|&auml;|&#228;|
+      { searchValue: "%C3%96", newValue: 'Ö', regExp: new RegExp("%C3%96", "g") }, //%D6|&Ouml;|&#214;|
+      { searchValue: "%C3%B6", newValue: 'ö', regExp: new RegExp("%C3%B6", "g") }, //%F6|&ouml;|&#246;|
+      { searchValue: "%C3%9C", newValue: 'Ü', regExp: new RegExp("%C3%9C", "g") }, //%DC|&Uuml;|&#220;|
+      { searchValue: "%C3%BC", newValue: 'ü', regExp: new RegExp("%C3%BC", "g") }, //%FC|&uuml;|&#252;|
+
+      { searchValue: "%C3%81", newValue: "Á", regExp: new RegExp("%C3%81", "g") },
+      { searchValue: "%C3%A1", newValue: "á", regExp: new RegExp("%C3%A1", "g") },
+      { searchValue: "%C3%89", newValue: "É", regExp: new RegExp("%C3%89", "g") },
+      { searchValue: "%C3%A9", newValue: "é", regExp: new RegExp("%C3%A9", "g") },
+      { searchValue: "%C3%8D", newValue: "Í", regExp: new RegExp("%C3%8D", "g") },
+      { searchValue: "%C3%AD", newValue: "í", regExp: new RegExp("%C3%AD", "g") },
+      { searchValue: "%C3%93", newValue: "Ó", regExp: new RegExp("%C3%93", "g") },
+      { searchValue: "%C3%B3", newValue: "ó", regExp: new RegExp("%C3%B3", "g") },
+      { searchValue: "%C3%9A", newValue: "Ú", regExp: new RegExp("%C3%9A", "g") },
+      { searchValue: "%C3%BA", newValue: "ú", regExp: new RegExp("%C3%BA", "g") },
+    ]
+    return pattern;
+  }
+
+  static refineTitle(title) {
+    /* Refine movie titles of MP */
+    var refinedTitle = title.split("/ AT:")[0]; // Delete "AT" for "alternative titles"
+    return refinedTitle;
+  }
+
+  static refineString(string) {
+    /* Refine strings */
+    var refinedString = string;
+    refinedString = Refinery.refineHTML(refinedString);
+    refinedString = refinedString.replace(/&amp;\s?/g, ''); //Delete encoded ampersand
+    refinedString = refinedString.replace(/(\?|'|"|,|\(|\)|\.|&|-|–|—)/g, ''); // Delete unwanted characters
+    refinedString = refinedString.replace(/(:)/g, ' ');
+    refinedString = Refinery.trimWhitespaces(refinedString);
+    return refinedString;
+  }
+
+  static trimWhitespaces(string) {
+    var refinedString = string;
+    refinedString = refinedString.replace(/\s\s+/g, ' ');
+    refinedString = refinedString.replace(/(^\s+|\s+$)/g, ''); //Delete Whitespace at the beginning/end
+    return refinedString;
+  }
+
+  static refineRating(rating) {
+    /* Refine/standardize ratings */
+    var refinedRating = rating.match(/((\d\d+)|(\d\.?\d*))/)
+    if (refinedRating !== null) {
+      return refinedRating[0];
+    } else {
+      return '-';
+    }
+  }
+
+  static refineRatingCount(ratingCount) {
+    /* Refine/standardize view counter */
+    var refinedRatingCount = ratingCount.replace(/(\.|,)/g,"");
+    refinedRatingCount = Refinery.trimWhitespaces(refinedRatingCount);
+    if (refinedRatingCount.match(/^\d+$/)) {
+      return refinedRatingCount;
+    } else {
+      return "0";
+    }
+  }
+
+  static refineHTML(html) {
+    /* Refine HTML / edit encoded HTML */
+    var refinedHTML = encodeURI(html); //force uniform HTML
+    refinedHTML = Refinery.decode(refinedHTML); //use uniformed HTML to replace certain patterns (unicode/UTF-8/...) with known characters
+    refinedHTML = refinedHTML.replace(/%(\d|[ABCDEF])(\d|[ABCDEF])/g,""); //delete all other possible patterns
+    return refinedHTML;
+  }
+
+  static encode(string) {
+    /* translate known characters to patterns (unicode/UTF-8/...)  */
+    var encodedString = string;
+    for (var i = 0; i < Refinery.pattern.length; i++) {
+      encodedString = encodedString.replace(Refinery.pattern[i].newValue, Refinery.pattern[i]. searchValue);
+    }
+    return encodedString;
+  }
+
+  static decode(string) {
+    /* translate patterns (unicode/UTF-8/...) to known characters */
+    var decodedString = string;
+    for (var i = 0; i < Refinery.pattern.length; i++) {
+      decodedString = decodedString.replace(Refinery.pattern[i].regExp, Refinery.pattern[i].newValue);
+    }
+    return decodedString;
+  };
+
+}
+
+// var Refinery = new Refinery();
 var MPRatingFactory = new MPRatingFactory();
 var MPExtension = new MPExtension();
 
@@ -59,6 +167,7 @@ var movieData = MPExtension.getMovieData(); //Search MP for information
 if(movieData === null ) {
         return false;
 }
+
 // Static variables shared by all instances of Rating
 Rating.movieAliases = movieData[0];
 Rating.movieYear = movieData[1];
@@ -1324,115 +1433,6 @@ function MPRatingFactory() {
         };
 }
 
-function Refinery() {
-/* Collection of methods to refine several types of character sequences */
-
-        var pattern = [];
-
-        function addPattern(searchValue, newValue) {
-                var regExp = new RegExp(searchValue, "g");
-                pattern.push({searchValue, newValue, regExp});
-        }
-        addPattern("%E2%80%93",'-');
-        addPattern("%25E2%2580%2593",'–');
-        addPattern("%3C",'<');
-        addPattern("%3E",'>');
-        addPattern("%22",'"');
-        addPattern("%20",' ');
-        addPattern("&#x27;","'");
-        addPattern("&#39;","'");
-
-        addPattern("%C3%84","Ä"); //%C4|&Auml;|&#196;|
-        addPattern("%C3%A4","ä"); //%E4|&auml;|&#228;|
-        addPattern("%C3%96","Ö"); //%D6|&Ouml;|&#214;|
-        addPattern("%C3%B6","ö"); //%F6|&ouml;|&#246;|
-        addPattern("%C3%9C","Ü"); //%DC|&Uuml;|&#220;|
-        addPattern("%C3%BC","ü"); //%FC|&uuml;|&#252;|
-
-        addPattern("%C3%81","Á");
-        addPattern("%C3%A1","á");
-        addPattern("%C3%89","É");
-        addPattern("%C3%A9","é");
-        addPattern("%C3%8D","Í");
-        addPattern("%C3%AD","í");
-        addPattern("%C3%93","Ó");
-        addPattern("%C3%B3","ó");
-        addPattern("%C3%9A","Ú");
-        addPattern("%C3%BA","ú");
-
-        this.refineTitle = function(title) {
-        /* Refine movie titles of MP */
-                var refinedTitle = title.split("/ AT:")[0];  // Delete "AT" for "alternative titles"
-                return refinedTitle;
-        };
-
-        this.refineString = function(string) {
-        /* Refine strings */
-                var refinedString = string;
-                refinedString = this.refineHTML(refinedString);
-                refinedString = refinedString.replace(/&amp;\s?/g, ''); //Delete encoded ampersand
-                refinedString = refinedString.replace(/(\?|'|"|,|\(|\)|\.|&|-|–|—)/g, ''); // Delete unwanted characters
-                refinedString = refinedString.replace(/(:)/g, ' ');
-                refinedString = this.trimWhitespaces(refinedString);
-                return refinedString;
-        };
-
-        this.trimWhitespaces = function(string) {
-                var refinedString = string;
-                refinedString = refinedString.replace(/\s\s+/g, ' ');
-                refinedString = refinedString.replace(/(^\s+|\s+$)/g, ''); //Delete Whitespace at the beginning/end
-                return refinedString;
-        };
-
-        this.refineRating = function(rating) {
-        /* Refine/standardize ratings */
-                var refinedRating = rating.match(/((\d\d+)|(\d\.?\d*))/)
-                if(refinedRating !== null) {
-                        return refinedRating[0];
-                } else {
-                        return '-';
-                }
-        };
-
-        this.refineRatingCount = function(ratingCount) {
-        /* Refine/standardize view counter */
-                var refinedRatingCount = ratingCount.replace(/(\.|,)/g,"");
-                refinedRatingCount = this.trimWhitespaces(refinedRatingCount);
-                if(refinedRatingCount.match(/^\d+$/)) {
-                        return refinedRatingCount;
-                } else {
-                        return "0";
-                }
-        };
-
-        this.refineHTML = function(html) {
-        /* Refine HTML / edit encoded HTML */
-                var refinedHTML = encodeURI(html); //force uniform HTML
-                refinedHTML = this.decode(refinedHTML); //use uniformed HTML to replace certain patterns (unicode/UTF-8/...) with known characters
-                refinedHTML = refinedHTML.replace(/%(\d|[ABCDEF])(\d|[ABCDEF])/g,""); //delete all other possible patterns
-                return refinedHTML;
-        };
-
-        this.encode = function(string) {
-        /* translate known characters to patterns (unicode/UTF-8/...)  */
-                var encodedString = string;
-                for(var i = 0; i < pattern.length; i++) {
-                        encodedString = encodedString.replace(pattern[i].newValue, pattern[i].searchValue);
-                }
-                return encodedString;
-        };
-
-        this.decode = function(string) {
-        /* translate patterns (unicode/UTF-8/...) to known characters */
-                var decodedString = string;
-                for(var i = 0; i < pattern.length; i++) {
-                        decodedString = decodedString.replace(pattern[i].regExp, pattern[i].newValue);
-                }
-                return decodedString;
-        };
-
-        return this;
-}
 
 //-----LOCALSTORAGE-ADAPTER------------
 /* To store some binary information */
