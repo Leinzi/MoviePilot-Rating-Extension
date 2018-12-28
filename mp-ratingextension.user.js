@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.2.0
+// @version       3.2.1
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -31,20 +31,20 @@
 
 //-------Constants---------------
 //Div-Names from every single rating. Used to show/hide the ratings via a checkbox
-var C_SHOWRATINGS = 'showExtRatings';
-var C_ID_IMDBRATING = 'imdbRating';
-var C_ID_RTRATINGS = 'rtRatings';
-var C_ID_RTTOMATOMETER = 'rtTomatometer';
-var C_ID_RTCRITICSRATING = 'rtCritRating';
-var C_ID_RTCOMMUNITYRATING = 'rtComRating';
-var C_ID_MCRATINGS = 'mcMetacritic';
-var C_ID_MCCRITICSRATING = 'mcCritRating';
-var C_ID_MCCOMMUNITYRATING = 'mcComRating';
-var C_ID_TMDBRATING = 'tmdbRating';
-var C_ID_WIKIINFO = 'wikiInfo';
+const C_SHOWRATINGS = 'showExtRatings';
+const C_ID_IMDBRATING = 'imdbRating';
+const C_ID_RTRATINGS = 'rtRatings';
+const C_ID_RTTOMATOMETER = 'rtTomatometer';
+const C_ID_RTCRITICSRATING = 'rtCritRating';
+const C_ID_RTCOMMUNITYRATING = 'rtComRating';
+const C_ID_MCRATINGS = 'mcMetacritic';
+const C_ID_MCCRITICSRATING = 'mcCritRating';
+const C_ID_MCCOMMUNITYRATING = 'mcComRating';
+const C_ID_TMDBRATING = 'tmdbRating';
+const C_ID_WIKIINFO = 'wikiInfo';
 
-var DEBUG_MODE = true;
-var VERBOSE = true;
+const DEBUG_MODE = true;
+const VERBOSE = true;
 //------/Constants---------------
 
 //-------Helper---------------
@@ -59,7 +59,7 @@ var VERBOSE = true;
  */
 if (typeof Array.prototype.reIndexOf === 'undefined') {
   Array.prototype.reIndexOf = function (rx) {
-    for (var i in this) {
+    for (let i in this) {
       if (this[i].toString().match(rx)) {
         return i;
       }
@@ -79,7 +79,7 @@ if (typeof Array.prototype.reIndexOf === 'undefined') {
  */
 if (typeof Array.prototype.reMatch === 'undefined') {
   Array.prototype.reMatch = function (rx) {
-    for (var i in this) {
+    for (let i in this) {
       if (this[i].toString().match(rx)) {
         return true;
       }
@@ -112,13 +112,13 @@ class Refinery {
 
   static refineTitle(title) {
     /* Refine movie titles of MP */
-    var refinedTitle = title.split("/ AT:")[0]; // Delete "AT" for "alternative titles"
+    let refinedTitle = title.split("/ AT:")[0]; // Delete "AT" for "alternative titles"
     return refinedTitle;
   }
 
   static refineString(string) {
     /* Refine strings */
-    var refinedString = string;
+    let refinedString = string;
     refinedString = Refinery.refineHTML(refinedString);
     refinedString = refinedString.replace(/&amp;\s?/g, ''); //Delete encoded ampersand
     refinedString = refinedString.replace(/(\?|'|"|,|\(|\)|\.|&|-|–|—)/g, ''); // Delete unwanted characters
@@ -128,7 +128,7 @@ class Refinery {
   }
 
   static trimWhitespaces(string) {
-    var refinedString = string;
+    let refinedString = string;
     refinedString = refinedString.replace(/\s\s+/g, ' ');
     refinedString = refinedString.replace(/(^\s+|\s+$)/g, ''); //Delete Whitespace at the beginning/end
     return refinedString;
@@ -136,7 +136,7 @@ class Refinery {
 
   static refineRating(rating) {
     /* Refine/standardize ratings */
-    var refinedRating = rating.match(/((\d\d+)|(\d\.?\d*))/)
+    let refinedRating = rating.match(/((\d\d+)|(\d\.?\d*))/)
     if (refinedRating !== null) {
       return refinedRating[0];
     } else {
@@ -146,7 +146,7 @@ class Refinery {
 
   static refineRatingCount(ratingCount) {
     /* Refine/standardize view counter */
-    var refinedRatingCount = ratingCount.replace(/(\.|,)/g,"");
+    let refinedRatingCount = ratingCount.replace(/(\.|,)/g,"");
     refinedRatingCount = Refinery.trimWhitespaces(refinedRatingCount);
     if (refinedRatingCount.match(/^\d+$/)) {
       return refinedRatingCount;
@@ -157,7 +157,7 @@ class Refinery {
 
   static refineHTML(html) {
     /* Refine HTML / edit encoded HTML */
-    var refinedHTML = encodeURI(html); //force uniform HTML
+    let refinedHTML = encodeURI(html); //force uniform HTML
     refinedHTML = Refinery.decode(refinedHTML); //use uniformed HTML to replace certain patterns (unicode/UTF-8/...) with known characters
     refinedHTML = refinedHTML.replace(/%(\d|[ABCDEF])(\d|[ABCDEF])/g,""); //delete all other possible patterns
     return refinedHTML;
@@ -165,8 +165,8 @@ class Refinery {
 
   static encode(string) {
     /* translate known characters to patterns (unicode/UTF-8/...)  */
-    var encodedString = string;
-    for (var pattern of Refinery.pattern) {
+    let encodedString = string;
+    for (let pattern of Refinery.pattern) {
       encodedString = encodedString.replace(pattern.newValue, pattern.searchValue);
     }
     return encodedString;
@@ -174,8 +174,8 @@ class Refinery {
 
   static decode(string) {
     /* translate patterns (unicode/UTF-8/...) to known characters */
-    var decodedString = string;
-    for (var pattern of Refinery.pattern) {
+    let decodedString = string;
+    for (let pattern of Refinery.pattern) {
       decodedString = decodedString.replace(pattern.regExp, pattern.newValue);
     }
     return decodedString;
@@ -216,14 +216,14 @@ class MPRatingFactory {
 
   /* Rebuild the rating structure of MP to show external ratings */
   static buildRating(rating, source, ratingCount, range, estCorrectness, id) {
-    var ratingWrapper = MPRatingFactory._createWrapper(id);
-    var ratingValue = MPRatingFactory._createValue(rating);
+    let ratingWrapper = MPRatingFactory._createWrapper(id);
+    let ratingValue = MPRatingFactory._createValue(rating);
     ratingWrapper.appendChild(ratingValue);
-    var ratingInfo = MPRatingFactory._createInfo(source, ratingCount + " Bewertungen", "Skala 0 bis " + range);
+    let ratingInfo = MPRatingFactory._createInfo(source, ratingCount + " Bewertungen", "Skala 0 bis " + range);
     ratingWrapper.appendChild(ratingInfo);
 
     if (estCorrectness !== Rating.correctness.LOW) {
-      var estimatedCorrectness = MPRatingFactory._createEstCorrectness(estCorrectness);
+      let estimatedCorrectness = MPRatingFactory._createEstCorrectness(estCorrectness);
       ratingWrapper.appendChild(estimatedCorrectness);
     }
     return ratingWrapper;
@@ -231,15 +231,15 @@ class MPRatingFactory {
 
   /* Rebuild the rating structure of MP to show external information */
   static buildInfo(source, sourceInfo, estCorrectness, id) {
-    var infoWrapper = MPRatingFactory._createWrapper(id);
-    var infoValue = MPRatingFactory._createValue("i");
+    let infoWrapper = MPRatingFactory._createWrapper(id);
+    let infoValue = MPRatingFactory._createValue("i");
     infoWrapper.appendChild(infoValue);
-    var sourceInfoSplit = sourceInfo.split(/(^.{0,20} )/);
-    var infoInfo = MPRatingFactory._createInfo(source, sourceInfoSplit[1], sourceInfoSplit[2]);
+    let sourceInfoSplit = sourceInfo.split(/(^.{0,20} )/);
+    let infoInfo = MPRatingFactory._createInfo(source, sourceInfoSplit[1], sourceInfoSplit[2]);
     infoWrapper.appendChild(infoInfo);
 
     if (estCorrectness !== Rating.correctness.LOW) {
-      var estimatedCorrectness = MPRatingFactory._createEstCorrectness(estCorrectness);
+      let estimatedCorrectness = MPRatingFactory._createEstCorrectness(estCorrectness);
       infoWrapper.appendChild(estimatedCorrectness);
     }
     return infoWrapper;
@@ -247,7 +247,7 @@ class MPRatingFactory {
 
   /* MPs rating wrapper*/
   static _createWrapper(id) {
-    var wrapper = document.createElement('div');
+    let wrapper = document.createElement('div');
     wrapper.id = id;
     wrapper.className = "criticscount";
     styleWrapper(wrapper)
@@ -262,7 +262,7 @@ class MPRatingFactory {
 
   /* MPs rating */
   static _createValue(value) {
-    var valueSpan = document.createElement('span');
+    let valueSpan = document.createElement('span');
     valueSpan.className = "huge";
     valueSpan.innerHTML = value;
     styleValueElement(valueSpan);
@@ -271,22 +271,22 @@ class MPRatingFactory {
 
   /* MPs rating infos */
   static _createInfo(title, description, descriptionExp) {
-    var info = document.createElement('div');
+    let info = document.createElement('div');
     info.className = "quite";
     info.style.margin  = "0px";
     info.style.padding = "0px";
     info.style.float = "left";
 
-    var infoSource = document.createTextNode(title);
+    let infoSource = document.createTextNode(title);
     info.appendChild(infoSource);
     info.appendChild(document.createElement('br'));
 
-    var infoDesc = document.createElement('span');
+    let infoDesc = document.createElement('span');
     infoDesc.innerHTML = description;
     info.appendChild(infoDesc);
     info.appendChild(document.createElement('br'));
 
-    var infoDescExp = document.createElement('span');
+    let infoDescExp = document.createElement('span');
     infoDescExp.className = "small";
     infoDescExp.innerHTML = descriptionExp;
     info.appendChild(infoDescExp);
@@ -296,14 +296,14 @@ class MPRatingFactory {
 
   /* Display for the estimated correctness of a added rating */
   static _createEstCorrectness(correctness) {
-    var tooltipText = "Matching correctness is: ";
-    var estimationInfo = document.createElement('div');
+    let tooltipText = "Matching correctness is: ";
+    let estimationInfo = document.createElement('div');
     estimationInfo.className = "correctness";
     estimationInfo.style.margin = "15px 10px 15px 0px";
     estimationInfo.style.padding = "0px";
     estimationInfo.style.float = "right";
 
-    var circle = document.createElement('div');
+    let circle = document.createElement('div');
     circle.style.width = "10px";
     circle.style.height = "10px";
     circle.style.borderRadius = "5px";
@@ -325,7 +325,7 @@ class MPRatingFactory {
       tooltipText = tooltipText + "Bad";
     }
 
-    var tooltip = document.createElement('span');
+    let tooltip = document.createElement('span');
     tooltip.innerHTML = tooltipText;
     tooltip.style.visibility = "hidden";
     tooltip.style.width = "180px";
@@ -371,7 +371,7 @@ class MPRatingFactory {
 
   /* Wrap the MP rating structure in a link to the ratings website */
   static wrapRatingWithLink(rating, movieURL) {
-    var linkedRating = document.createElement('a');
+    let linkedRating = document.createElement('a');
     linkedRating.appendChild(rating);
     linkedRating.title = movieURL;
     linkedRating.href = movieURL;
@@ -381,13 +381,13 @@ class MPRatingFactory {
 
 // var Refinery = new Refinery();
 // var MPRatingFactory = new MPRatingFactory();
-var MPExtension = new MPExtension();
+let MPExtension = new MPExtension();
 
 if(!MPExtension.setupExtension()){
         return false;
 }
 
-var movieData = MPExtension.getMovieData(); //Search MP for information
+let movieData = MPExtension.getMovieData(); //Search MP for information
 if(movieData === null ) {
         return false;
 }
@@ -397,11 +397,11 @@ Rating.movieAliases = movieData[0];
 Rating.movieYear = movieData[1];
 Rating.correctness = {PERFECT: 0, GOOD: 1, OKAY: 2, BAD: 3, POOR: 4};
 
-var tmdbRating = new Rating().ratingSite('TMDB').ratingSiteAbbr('TMDB').ratingId('tmdb').ratingDivId(C_ID_TMDBRATING).websiteURL('https://www.themoviedb.org/movie/').scrapperFunction(tmdbRatingScrapper).responseSiteHookFunction(collectEnglishMovieTitles).numberOfResultsIncluded(10).blacklist(new RegExp(/\s?TMDb$/i)).blacklist(new RegExp(/(?:(?=The Movie Database)The Movie Database|(?=The Movie)The Movie|(?=The)The)$/i)).blacklist(new RegExp(/Recommended Movies/i)).ratingLinkModifier(tmdbLinkModifier).ratingRequestModifier(tmdbRequestModifier);
-var imdbRating = new Rating().ratingSite('IMDB').ratingSiteAbbr('IMDB').ratingRange('10').ratingId('imdb').ratingDivId(C_ID_IMDBRATING).websiteURL('www.imdb.com/title').googleRating().numberOfResultsIncluded(5).blacklist(new RegExp(/IMDb$/i)).blacklist(new RegExp(/TV Movie/i)).ratingRequestModifier(imdbRequestModifier);
-var rtRating = new Rating().ratingSite('rotten tomatoes').ratingSiteAbbr('RT').ratingId('rt').ratingDivId(C_ID_RTRATINGS).websiteURL('www.rottentomatoes.com/m/').scrapperFunction(rtRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/(?:(?=Rotten Tomatoes)Rotten Tomatoes|(?=Rotten)Rotten)$/i)).blacklist(new RegExp(Rating.movieYear+ " Original", "i")).ratingRequestModifier(rtRequestModifier);
-var mcRating = new Rating().ratingSite('metacritic').ratingSiteAbbr('MC').ratingId('mc').ratingDivId(C_ID_MCRATINGS).websiteURL('www.metacritic.com/movie/').scrapperFunction(mcRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/Metacritic$/i)).blacklist(new RegExp(/Reviews/i)).ratingRequestModifier(mcRequestModifier);
-var wikiInfo = new Rating().ratingSite('Wikipedia').ratingSiteAbbr('wiki').ratingId('wiki').ratingDivId(C_ID_WIKIINFO).websiteURL('en.wikipedia.org').info().description('The Free Encyclopedia').numberOfResultsIncluded(5).blacklist(new RegExp(/(film)?\s*(?:(?=Wikipedia the free encyclopedia)Wikipedia the free encyclopedia|(?=Wikipedia the free)Wikipedia the free|(?=Wikipedia)Wikipedia)$/i)).googleRequestModifier(wikiRequestModifier);
+let tmdbRating = new Rating().ratingSite('TMDB').ratingSiteAbbr('TMDB').ratingId('tmdb').ratingDivId(C_ID_TMDBRATING).websiteURL('https://www.themoviedb.org/movie/').scrapperFunction(tmdbRatingScrapper).responseSiteHookFunction(collectEnglishMovieTitles).numberOfResultsIncluded(10).blacklist(new RegExp(/\s?TMDb$/i)).blacklist(new RegExp(/(?:(?=The Movie Database)The Movie Database|(?=The Movie)The Movie|(?=The)The)$/i)).blacklist(new RegExp(/Recommended Movies/i)).ratingLinkModifier(tmdbLinkModifier).ratingRequestModifier(tmdbRequestModifier);
+let imdbRating = new Rating().ratingSite('IMDB').ratingSiteAbbr('IMDB').ratingRange('10').ratingId('imdb').ratingDivId(C_ID_IMDBRATING).websiteURL('www.imdb.com/title').googleRating().numberOfResultsIncluded(5).blacklist(new RegExp(/IMDb$/i)).blacklist(new RegExp(/TV Movie/i)).ratingRequestModifier(imdbRequestModifier);
+let rtRating = new Rating().ratingSite('rotten tomatoes').ratingSiteAbbr('RT').ratingId('rt').ratingDivId(C_ID_RTRATINGS).websiteURL('www.rottentomatoes.com/m/').scrapperFunction(rtRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/(?:(?=Rotten Tomatoes)Rotten Tomatoes|(?=Rotten)Rotten)$/i)).blacklist(new RegExp(Rating.movieYear+ " Original", "i")).ratingRequestModifier(rtRequestModifier);
+let mcRating = new Rating().ratingSite('metacritic').ratingSiteAbbr('MC').ratingId('mc').ratingDivId(C_ID_MCRATINGS).websiteURL('www.metacritic.com/movie/').scrapperFunction(mcRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/Metacritic$/i)).blacklist(new RegExp(/Reviews/i)).ratingRequestModifier(mcRequestModifier);
+let wikiInfo = new Rating().ratingSite('Wikipedia').ratingSiteAbbr('wiki').ratingId('wiki').ratingDivId(C_ID_WIKIINFO).websiteURL('en.wikipedia.org').info().description('The Free Encyclopedia').numberOfResultsIncluded(5).blacklist(new RegExp(/(film)?\s*(?:(?=Wikipedia the free encyclopedia)Wikipedia the free encyclopedia|(?=Wikipedia the free)Wikipedia the free|(?=Wikipedia)Wikipedia)$/i)).googleRequestModifier(wikiRequestModifier);
 
 MPExtension.addRating("imdb", imdbRating, [[C_ID_IMDBRATING, 'IMDB Bewertungen anzeigen']]);
 MPExtension.addRating("rt", rtRating, [[C_ID_RTTOMATOMETER, 'RT Tomatormeter anzeigen'],[C_ID_RTCRITICSRATING, 'RT Kritiker Bewertungen anzeigen'],[C_ID_RTCOMMUNITYRATING, 'RT Community Bewertungen anzeigen']]);
@@ -435,16 +435,16 @@ function collectEnglishMovieTitles(tmdbResponse) {
         }
 
         //query english titles
-        var titles = [];
-        var length;
-        var match;
-        var country;
-        var type;
+        let titles = [];
+        let length;
+        let match;
+        let country;
+        let type;
 
         // default page
-        var titleDiv = tmdbResponse.querySelector("div.title > span > a > h2");
+        let titleDiv = tmdbResponse.querySelector("div.title > span > a > h2");
         if (titleDiv !== null) {
-                var title = titleDiv.childNodes[0].nodeValue
+                let title = titleDiv.childNodes[0].nodeValue
                 length = Rating.movieAliases.length;
                 match = Refinery.refineString(title);
                 prependStringToSet(Rating.movieAliases, Refinery.refineString(match));
@@ -455,7 +455,7 @@ function collectEnglishMovieTitles(tmdbResponse) {
         }
 
         // release-info page
-        var titleSpan = tmdbResponse.querySelector("span[itemprop=name]");
+        let titleSpan = tmdbResponse.querySelector("span[itemprop=name]");
         if(titleSpan !== null) {
                 match = titleSpan.innerHTML;
                 length = Rating.movieAliases.length;
@@ -466,10 +466,10 @@ function collectEnglishMovieTitles(tmdbResponse) {
                 }
         }
 
-        var table = tmdbResponse.querySelectorAll("table.new > tbody");
+        let table = tmdbResponse.querySelectorAll("table.new > tbody");
         if(table !== null && table.length >= 2) {
                 table = table[1];
-                for(var i = 0; i < table.children.length; i++) {
+                for(let i = 0; i < table.children.length; i++) {
                         country = table.children[i].children[2].innerHTML;
                         type = table.children[i].children[1].innerHTML;
                         if(country == "US" && (type == "" || type == "short title" || type =="Modern Title")) {
@@ -487,7 +487,7 @@ function collectEnglishMovieTitles(tmdbResponse) {
 
 /* Request modifiers - transform the request URL */
 function tmdbRequestModifier(url) {
-        var refinedUrl = url.match(/(https?:\/\/)?www\.themoviedb\.org\/movie\/.*?(?=(\?|\/))/);
+        let refinedUrl = url.match(/(https?:\/\/)?www\.themoviedb\.org\/movie\/.*?(?=(\?|\/))/);
         if(refinedUrl !== null) {
                 refinedUrl = refinedUrl[0];
         } else {
@@ -497,7 +497,7 @@ function tmdbRequestModifier(url) {
         return refinedUrl + "?language=en";
 }
 function tmdbLinkModifier(url) {
-        var refinedUrl = url.match(/(https?:\/\/)?www\.themoviedb\.org\/movie\/.*?(?=(\?|\/))/);
+        let refinedUrl = url.match(/(https?:\/\/)?www\.themoviedb\.org\/movie\/.*?(?=(\?|\/))/);
         if(refinedUrl !== null) {
                 refinedUrl = refinedUrl[0];
         } else {
@@ -507,14 +507,14 @@ function tmdbLinkModifier(url) {
         return refinedUrl.replace(/((\?language=[a-z]{2}(-[A-Z]{2})?|\/de)?$)/, '?language=en'); //the english website is needed
 }
 function imdbRequestModifier(url) {
-        var refinedUrl = url.match(/(https?:\/\/)?www\.imdb\.com\/title\/.*?(?=(\?|\/))/);
+        let refinedUrl = url.match(/(https?:\/\/)?www\.imdb\.com\/title\/.*?(?=(\?|\/))/);
         if(refinedUrl !== null) {
                 return refinedUrl[0];
         }
         return url;
 }
 function mcRequestModifier(url) {
-        var refinedUrl = url.match(/(https?:\/\/)?www\.metacritic\.com\/movie\/.*?(?=(\?|\/))/);
+        let refinedUrl = url.match(/(https?:\/\/)?www\.metacritic\.com\/movie\/.*?(?=(\?|\/))/);
         if(refinedUrl !== null) {
                 return refinedUrl[0];
         }
@@ -522,7 +522,7 @@ function mcRequestModifier(url) {
 }
 
 function rtRequestModifier(url) {
-        var refinedUrl = url.match(/(https?:\/\/)?www\.rottentomatoes\.com\/m\/.*?(?=(\?|\/))/);
+        let refinedUrl = url.match(/(https?:\/\/)?www\.rottentomatoes\.com\/m\/.*?(?=(\?|\/))/);
         if(refinedUrl !== null) {
                 return refinedUrl[0];
         }
@@ -537,12 +537,12 @@ function MPExtension() {
         /* Base class for the MoviePilot Rating Extension
         * Sets up the Extension and lets you add new ratings from other websites
         */
-        var ratingAnchor; //Div element. Hook point for children, especially ratings containers
-        var ratings = [];
-        var checkboxes = []; //Collection of Checkboxes; To show/hide different ratings.
-        var checkboxRelation = [];
-        var ratingQueue = [];
-        var self = this;
+        let ratingAnchor; //Div element. Hook point for children, especially ratings containers
+        let ratings = [];
+        let checkboxes = []; //Collection of Checkboxes; To show/hide different ratings.
+        let checkboxRelation = [];
+        let ratingQueue = [];
+        let self = this;
 
         this.setupExtension = function() {
         /* Setting up the extension
@@ -551,17 +551,17 @@ function MPExtension() {
                 if(!fixMPLayout()) {
                         return false;
                 }
-                var bewertung = document.getElementsByClassName('forecastcount')[0];
-                var parent = bewertung.parentNode;
+                let bewertung = document.getElementsByClassName('forecastcount')[0];
+                let parent = bewertung.parentNode;
 
-                var ratingExtensionDiv = createElementWithId('div', 'ratingExtension');
-                var extRatingsDiv = createElementWithId('div', 'extRatings');
-                var ratingExtensionControlDiv = createElementWithId('div', 'ratingExtControl');
-                var hr1 = document.createElement('hr');
-                var hr2 = document.createElement('hr');
-                var toggleContentButton = createElementWithId('span', 'toggleContentButton');
-                var showSettingsButton = createElementWithId('span', 'settingsButton');
-                var toStringButton = createElementWithId('span', 'toStringButton');
+                let ratingExtensionDiv = createElementWithId('div', 'ratingExtension');
+                let extRatingsDiv = createElementWithId('div', 'extRatings');
+                let ratingExtensionControlDiv = createElementWithId('div', 'ratingExtControl');
+                let hr1 = document.createElement('hr');
+                let hr2 = document.createElement('hr');
+                let toggleContentButton = createElementWithId('span', 'toggleContentButton');
+                let showSettingsButton = createElementWithId('span', 'settingsButton');
+                let toStringButton = createElementWithId('span', 'toStringButton');
 
                 ratingExtensionControlDiv.style.margin = '0px 0px 0px 25px';
                 toggleContentButton.style.color = '#9C9C9C';
@@ -606,11 +606,11 @@ function MPExtension() {
 
   /* Modifies MPs structure - all ratings have to look alike... */
   function fixMPLayout() {
-    var userAction = document.getElementsByClassName('movie_user_action');
-    var criticsCount = document.getElementsByClassName('criticscount');
-    var contentCount = document.getElementsByClassName('contentcount');
-    var huge = document.getElementsByClassName('huge');
-    var quite = document.getElementsByClassName('quite');
+    let userAction = document.getElementsByClassName('movie_user_action');
+    let criticsCount = document.getElementsByClassName('criticscount');
+    let contentCount = document.getElementsByClassName('contentcount');
+    let huge = document.getElementsByClassName('huge');
+    let quite = document.getElementsByClassName('quite');
 
     if (userAction === null || criticsCount === null || contentCount === null || huge === null || quite === null) {
       if (DEBUG_MODE) {
@@ -619,33 +619,28 @@ function MPExtension() {
       return false;
     }
 
-    for (var wrapper of userAction) { styleWrapper(wrapper) }
-
-    for (var wrapper of criticsCount) {
-      styleWrapper(wrapper)
-      wrapper.children[1].replaceChild(document.createTextNode("Kritiker"), wrapper.children[1].childNodes[0]);
-    }
-
-    for (var wrapper of contentCount) { styleWrapper(wrapper) }
-    for (var element of huge) { styleValueElement(element) }
-    for (var element of quite) { styleQuiteElement(element) }
+    for (let wrapper of userAction) { styleWrapper(wrapper) }
+    for (let wrapper of criticsCount) { styleWrapper(wrapper) }
+    for (let wrapper of contentCount) { styleWrapper(wrapper) }
+    for (let element of huge) { styleValueElement(element) }
+    for (let element of quite) { styleQuiteElement(element) }
 
     return true;
   }
 
         this.addTitleToMP = function(title) {
-                var titlesTooltip = document.querySelector("#titlesTooltip")
+                let titlesTooltip = document.querySelector("#titlesTooltip")
                 if(titlesTooltip == null) {
 
-                        var movieData = document.getElementsByClassName('movie--data');
-                        var atTitles = movieData[0];
+                        let movieData = document.getElementsByClassName('movie--data');
+                        let atTitles = movieData[0];
                         atTitles.children[0].style.display = "inline-block";
 
                         tmdbTitles = document.createElement("div");
                         tmdbTitles.style.display = "inline-block";
                         tmdbTitles.id = "tmdbTitles";
 
-                        var info = document.createElement("span");
+                        let info = document.createElement("span");
 
                         info.innerHTML = "?";
                         info.style.width = "14px"
@@ -658,8 +653,8 @@ function MPExtension() {
                         info.style.display = "inherit";
                         info.style.margin = "0px 0px 0px 3px"
 
-                        var tooltipText = "<b>Titles from TMDb:</b><br>- "+title;
-                        var tooltip = document.createElement('span');
+                        let tooltipText = "<b>Titles from TMDb:</b><br>- "+title;
+                        let tooltip = document.createElement('span');
                         tooltip.id = "titlesTooltip";
                         tooltip.innerHTML = tooltipText;
                         tooltip.style.visibility = "hidden";
@@ -693,15 +688,15 @@ function MPExtension() {
 
         function createElementWithId(element, id) {
         /* Ceating a new HTML element with an ID */
-                var newDiv = document.createElement(element);
+                let newDiv = document.createElement(element);
                 newDiv.id = id;
                 return newDiv;
         }
 
         function onToggleContentButtonClick() {
         /* Handler for Click Event - toggleContentButton */
-                var content = document.getElementById('extRatings');
-                var button = document.getElementById('toggleContentButton');
+                let content = document.getElementById('extRatings');
+                let button = document.getElementById('toggleContentButton');
                 if(content.style.display == 'inline') { //toogling button description and local storage information
                         content.style.display = 'none';
                         button.innerHTML = 'Suche aktivieren';
@@ -718,7 +713,7 @@ function MPExtension() {
         /* Handler for Click Event - settingsButton
         * Creates and shows the settings on demand
         */
-                var overlay = document.getElementById('overlay');
+                let overlay = document.getElementById('overlay');
                 if(overlay !== null) {
                         overlay.style.visibility = 'visible';
                 } else {
@@ -730,9 +725,9 @@ function MPExtension() {
 
         function addSettingsOverlay(){
         /* Creation of the settings for the extension */
-                var overlayDiv = document.createElement('div');
-                var overlayContentDiv = document.createElement('div');
-                var exitButton = document.createElement('a');
+                let overlayDiv = document.createElement('div');
+                let overlayContentDiv = document.createElement('div');
+                let exitButton = document.createElement('a');
 
                 overlayDiv.id               = 'overlay';
                 overlayDiv.style.visibility = 'hidden';
@@ -754,7 +749,7 @@ function MPExtension() {
                 exitButton.innerHTML = 'Einstellungen schließen';
                 exitButton.onclick = function() {document.getElementById('overlay').style.visibility = 'hidden';};
 
-                for(var i = 0; i < checkboxes.length; i++) {
+                for(let i = 0; i < checkboxes.length; i++) {
                         overlayContentDiv.appendChild(checkboxes[i]);
                 }
 
@@ -775,8 +770,8 @@ function MPExtension() {
         /* Creation of a chekbox
         * Registers its <id> in the local storage for future access
         */
-                var label = document.createElement('label');
-                var checkBox = document.createElement('input');
+                let label = document.createElement('label');
+                let checkBox = document.createElement('input');
 
                 label.appendChild(checkBox);
                 label.appendChild(document.createTextNode(' '+infoText));
@@ -788,12 +783,12 @@ function MPExtension() {
                 checkBox.onchange = function() {
                         setInfoInLocalStorage(id, this.checked);
                         if(this.checked) {
-                                var parent = checkboxRelation[id]; //Get childs' parent
-                                var alreadyStarted = ratings[parent][2];
+                                let parent = checkboxRelation[id]; //Get childs' parent
+                                let alreadyStarted = ratings[parent][2];
                                 if(alreadyStarted === false) {
                                         self.startRatingSearch();
                                 } else {
-                                        var element = document.getElementById(id);
+                                        let element = document.getElementById(id);
                                         if(element !== null) {
                                                 element.style.display = 'inline';
                                         } else {
@@ -802,11 +797,11 @@ function MPExtension() {
                                         }
                                 }
                         } else {
-                                var element = document.getElementById(id);
+                                let element = document.getElementById(id);
                                 if(element !== null) {
                                         element.style.display = 'none';
                                 } else {
-                                        var parent = checkboxRelation[id];
+                                        let parent = checkboxRelation[id];
                                         element = document.getElementById(parent);
                                         element.style.display = 'none';
                                 }
@@ -817,9 +812,9 @@ function MPExtension() {
 
         this.getMovieData = function() {
         /* Get important inforation from the MP website: Movie titles, year */
-                var movieHeadline = document.getElementsByClassName('movie--headline');
-                var movieData = document.getElementsByClassName('movie--data');
-                var movieDataClearfix = document.getElementsByClassName('movie--data clearfix');
+                let movieHeadline = document.getElementsByClassName('movie--headline');
+                let movieData = document.getElementsByClassName('movie--data');
+                let movieDataClearfix = document.getElementsByClassName('movie--data clearfix');
 
                 if(movieHeadline === null || movieData === null || movieDataClearfix === null) {
                         if(DEBUG_MODE) {
@@ -828,12 +823,12 @@ function MPExtension() {
                         return null;
                 }
 
-                var titles = [];
+                let titles = [];
                 appendStringToSet(titles, Refinery.refineString(movieHeadline[0].innerHTML)); //MP movie title
                 getMovieAliases(movieData[0].children[0].innerHTML).forEach(function(currentValue, index, array){appendStringToSet(titles, Refinery.refineString(currentValue));}); //MP alternative titles
 
-                var year;
-                var i = 0;
+                let year;
+                let i = 0;
                 do{	//Fetch movie year
                         i++;
                         if(movieDataClearfix[0].children[i] !== undefined) {
@@ -848,7 +843,7 @@ function MPExtension() {
 
         function getMovieAliases(aliasString) {
         /* Get movie aliases from a string */
-                var aliases = aliasString.split(/\s?\/\sAT:\s?|\s?;\s?|\s?\/\s?/g); // Usual delimiters are '\ AT:', ';' and '/'
+                let aliases = aliasString.split(/\s?\/\sAT:\s?|\s?;\s?|\s?\/\s?/g); // Usual delimiters are '\ AT:', ';' and '/'
                 return aliases;
         };
 
@@ -856,7 +851,7 @@ function MPExtension() {
         /* Append a rating to its container
         * Choosing a specific container for every rating creates a steady sequence
         */
-                var element = document.getElementById(ratingAbbr);
+                let element = document.getElementById(ratingAbbr);
                 if(element !== null) {
                         element.appendChild(ratingObject);
                 } else if(DEBUG_MODE) {
@@ -873,8 +868,8 @@ function MPExtension() {
                 ratings[ratingAbbr] = [ratingObject, checkboxInformation, false, false];
                 self.appendNewContainer(ratingAbbr);
                 checkboxInformation.forEach(function(currentValue, index, array) {
-                        var checkboxId = currentValue[0];
-                        var description = currentValue[1];
+                        let checkboxId = currentValue[0];
+                        let description = currentValue[1];
                         appendNewCheckbox(checkboxId, description);
                         checkboxRelation[checkboxId] = ratingAbbr;
                 });
@@ -901,13 +896,13 @@ function MPExtension() {
         function runSearch(ratingAbbr) {
         /* Run the search for a specific rating */
                 if (ratingAbbr in ratings) {
-                        var userStartSettings = false; //Check in the local storage user settings if the search should be started
+                        let userStartSettings = false; //Check in the local storage user settings if the search should be started
                         ratings[ratingAbbr][1].forEach(function(currentValue, index, array){
                                 userStartSettings = (userStartSettings || getInfoFromLocalStorage(currentValue[0]))
                         });
 
-                        var alreadyStarted = ratings[ratingAbbr][2]; //Check if the search has already been started
-                        var isNotBannable = ratings[ratingAbbr][3]; //Check if the search can be forbidden
+                        let alreadyStarted = ratings[ratingAbbr][2]; //Check if the search has already been started
+                        let isNotBannable = ratings[ratingAbbr][3]; //Check if the search can be forbidden
                         if ((isNotBannable || userStartSettings) && alreadyStarted === false) { //Start the search?
                                 ratings[ratingAbbr][2] = true;
                                 ratings[ratingAbbr][0].getRating();
@@ -927,31 +922,31 @@ function MPExtension() {
         };
 
         function onToStringButtonClick() {
-                var string = ratingsToString();
+                let string = ratingsToString();
                 window.prompt("Copy to clipboard: Ctrl+C, Enter", string);
         };
 
 
         function ratingsToString() {
-                var resultString = "";
-                var mpCommunity = document.querySelector("div.contentcount");
-                var otherRatings = document.querySelectorAll("div.criticscount");
+                let resultString = "";
+                let mpCommunity = document.querySelector("div.contentcount");
+                let otherRatings = document.querySelectorAll("div.criticscount");
 
-                var rating = mpCommunity.children[0].innerHTML;
-                var ratingRange = "10";
-                var ratingCount = mpCommunity.querySelector("span[itemprop=ratingCount]").innerHTML;
-                var ratingInfo = "MP Community";
-                var tabs = "\t";
+                let rating = mpCommunity.children[0].innerHTML;
+                let ratingRange = "10";
+                let ratingCount = mpCommunity.querySelector("span[itemprop=ratingCount]").innerHTML;
+                let ratingInfo = "MP Community";
+                let tabs = "\t";
                 resultString += rating+"/"+ratingRange+"\t"+ratingInfo+"\t(Bewertungen: "+ratingCount+")";
 
                 rating = otherRatings[0].children[0].innerHTML;
-                var ratingRange = "10";
+                let ratingRange = "10";
                 ratingCount = otherRatings[0].children[1].children[1].innerHTML.match(/\d*/)[0];
                 ratingInfo = "MP Kritiker";
                 tabs = "\t";
                 resultString += "\n"+rating+"/"+ratingRange+tabs+ratingInfo+"\t\t(Bewertungen: "+ratingCount+")";
 
-                for(var i = 1; i < otherRatings.length; i++) {
+                for(let i = 1; i < otherRatings.length; i++) {
                         if(otherRatings[i].style.display == "inline") {
                                 rating = otherRatings[i].children[0].innerHTML;
                                 if(rating.match(/\d\.?\d?\d?/)) {
@@ -959,9 +954,9 @@ function MPExtension() {
                                         ratingCount = otherRatings[i].children[1].children[1].innerHTML.match(/\d*/)[0];
                                         ratingInfo = otherRatings[i].children[1].childNodes[0].nodeValue;
 
-                                        var tabsCount = 4 - (ratingInfo.length / 4);
+                                        let tabsCount = 4 - (ratingInfo.length / 4);
                                         tabs = "\t";
-                                        for(var j = 1; j < tabsCount; j++) {
+                                        for(let j = 1; j < tabsCount; j++) {
                                                 tabs += "\t";
                                         }
                                         resultString += "\n"+rating+"/"+ratingRange+"\t"+ratingInfo +tabs+"(Bewertungen: "+ratingCount+")";
@@ -978,7 +973,7 @@ function MPExtension() {
  * if the string isn't found in it
  */
 function appendStringToSet(array, string) {
-  var regEx = new RegExp("^" + string + "$", "i");
+  let regEx = new RegExp("^" + string + "$", "i");
   if (!array.reMatch(regEx)) {
     array.push(string);
   }
@@ -989,18 +984,18 @@ function appendStringToSet(array, string) {
  * if the string isn't found in it
  */
 function prependStringToSet(array, string) {
-  var regEx = new RegExp("^" + string + "$", "i");
+  let regEx = new RegExp("^" + string + "$", "i");
   if (!array.reMatch(regEx)) {
     array.unshift(string);
   }
 }
 
 function moveStringToFirstPosition(array, string) {
-  var regEx = new RegExp("^"+string+"$", "i");
-  var index = array.reIndexOf(regEx)
+  let regEx = new RegExp("^"+string+"$", "i");
+  let index = array.reIndexOf(regEx)
 
   if (index > 0) {
-    var swap = array[0];
+    let swap = array[0];
     array[0] = string;
     array[i-1] = swap;
   }
@@ -1011,36 +1006,36 @@ function Rating () {
         * Search automation for ratings of different movie websites
         * You can either use the rating Google provides on their results or write your own scrapper for a rating from any website and "hook" it to this rating
         */
-        var self = this;
+        let self = this;
 
-        var ratingSite="";	//Required; Full name of the website
-        var ratingSiteAbbr = ""; //Required; Abbrivation of the websites name
-        var description = "";	//(Only for the type Info) Short description of the website
-        var websiteURL=""; //Required; URL of the website; Used for the search
-        var ratingRange="10"; //[Used by standard Google rating scrapper] (Default) Range of the Rating
-        var ratingId="";	//[Used by standard Google rating scrapper] Required; ID of the Div-container where the rating will be added
-        var ratingDivId=""; //[Used by standard Google rating scrapper] Required; ID of the ratings Div-container
-        var googleRequest="";
-        var googleRequestModifier = function(url) {return url;}; 	//Modify Googles request URL
-        var ratingRequest="";
-        var ratingRequestModifier = function(url) {return url;};	//Modify the request URL of the rating website
-        var ratingLinkModifier = function(url) {return url;}; // Modify the Link to the rating website
-        var ratingSourceTypes = {EXTERN: 0, GOOGLE: 1, INFO:2};		//Type of the rating; EXTERN for own rating scrapper, GOOGLE for standard Google scrapper, INFO for a information website without rating
-        var ratingSourceType = ratingSourceTypes.EXTERN;		//Current type of the rating
-        var numberOfResultsIncluded = 1;	//Number of Google results that should be included in a search
-        var excludeUnplausibleYear = false;	//Should a result be excluded if the movie years aren't matching?
-        var googleHookFunction = null; //Hooked function; Will be called after a successfull google request
-        var responseSiteHookFunction = null; //Hooked function; Will be called after a successfull rating website request
-        var scrapperFunction = null;	//Scrapper function
-        var estCorrectness = Rating.correctness.LOW;	//Estimated correctness of a rating result
-        var blacklistedStrings = []; //Backlist of regular expressions, that will be deleted from char sequences like titles and infos
+        let ratingSite="";	//Required; Full name of the website
+        let ratingSiteAbbr = ""; //Required; Abbrivation of the websites name
+        let description = "";	//(Only for the type Info) Short description of the website
+        let websiteURL=""; //Required; URL of the website; Used for the search
+        let ratingRange="10"; //[Used by standard Google rating scrapper] (Default) Range of the Rating
+        let ratingId="";	//[Used by standard Google rating scrapper] Required; ID of the Div-container where the rating will be added
+        let ratingDivId=""; //[Used by standard Google rating scrapper] Required; ID of the ratings Div-container
+        let googleRequest="";
+        let googleRequestModifier = function(url) {return url;}; 	//Modify Googles request URL
+        let ratingRequest="";
+        let ratingRequestModifier = function(url) {return url;};	//Modify the request URL of the rating website
+        let ratingLinkModifier = function(url) {return url;}; // Modify the Link to the rating website
+        let ratingSourceTypes = {EXTERN: 0, GOOGLE: 1, INFO:2};		//Type of the rating; EXTERN for own rating scrapper, GOOGLE for standard Google scrapper, INFO for a information website without rating
+        let ratingSourceType = ratingSourceTypes.EXTERN;		//Current type of the rating
+        let numberOfResultsIncluded = 1;	//Number of Google results that should be included in a search
+        let excludeUnplausibleYear = false;	//Should a result be excluded if the movie years aren't matching?
+        let googleHookFunction = null; //Hooked function; Will be called after a successfull google request
+        let responseSiteHookFunction = null; //Hooked function; Will be called after a successfull rating website request
+        let scrapperFunction = null;	//Scrapper function
+        let estCorrectness = Rating.correctness.LOW;	//Estimated correctness of a rating result
+        let blacklistedStrings = []; //Backlist of regular expressions, that will be deleted from char sequences like titles and infos
 
-        var callback;
-        var SEARCH_GOOGLE_RESULT_INFO = false;	//Search Googles infos to a result for matches too
-        var LINK_WEBSITES = true;	//Link the websites
-        var LET_ME_GOOGLE_THAT = true;	//Link the Google request if a search is failing
-        var REQ_TIMEOUT = 10000;
-        var REQ_SYNCHRONOUS = false;
+        let callback;
+        const SEARCH_GOOGLE_RESULT_INFO = false;	//Search Googles infos to a result for matches too
+        const LINK_WEBSITES = true;	//Link the websites
+        const LET_ME_GOOGLE_THAT = true;	//Link the Google request if a search is failing
+        const REQ_TIMEOUT = 10000;
+        const REQ_SYNCHRONOUS = false;
 
         this.ratingSite = function(string) {ratingSite = string; return this;};
         this.ratingSiteAbbr = function(string) {ratingSiteAbbr = string; return this;};
@@ -1080,9 +1075,9 @@ function Rating () {
                         log("Google request successfull.");
                 }
 
-                var googleResponse = parseToHTMLElement(response.responseText);
-                var googleResults = googleResponse.querySelectorAll("div.g > div > div.rc > div.r > a");
-                var bestResult = getBestGoogleResult(googleResults);
+                let googleResponse = parseToHTMLElement(response.responseText);
+                let googleResults = googleResponse.querySelectorAll("div.g > div > div.rc > div.r > a");
+                let bestResult = getBestGoogleResult(googleResults);
 
                 if(bestResult !== null) {
                         if(DEBUG_MODE) {
@@ -1092,14 +1087,14 @@ function Rating () {
                         ratingRequest = ratingRequestModifier(ratingRequest);
 
                         if(ratingSourceType == ratingSourceTypes.GOOGLE) {
-                                var rating = getRatingByGoogle(bestResult[1]);
+                                let rating = getRatingByGoogle(bestResult[1]);
                                 if(LINK_WEBSITES) {
                                         MPExtension.addRatingToContainer(ratingId, MPRatingFactory.wrapRatingWithLink(rating, ratingRequest));
                                 } else {
                                         MPExtension.addRatingToContainer(ratingId, rating);
                                 }
                         } else if(ratingSourceType == ratingSourceTypes.INFO) {
-                                var info = MPRatingFactory.buildInfo(ratingSite,description, estCorrectness, ratingDivId);
+                                let info = MPRatingFactory.buildInfo(ratingSite,description, estCorrectness, ratingDivId);
                                 MPExtension.addRatingToContainer(ratingId, MPRatingFactory.wrapRatingWithLink(info, ratingRequest));
                         } else {	//Type EXTERN
                                 callback = handleRatingSiteResponse;
@@ -1128,13 +1123,13 @@ function Rating () {
                 if(DEBUG_MODE) {
                         log("Rating site request successfull.");
                 }
-                var ratingSiteResponse = parseToHTMLElement(response.responseText)
+                let ratingSiteResponse = parseToHTMLElement(response.responseText)
                 if(responseSiteHookFunction !== null) {
                         responseSiteHookFunction(ratingSiteResponse);
                 }
                 if(scrapperFunction !== null) {
-                        var rating = scrapperFunction(ratingSiteResponse, estCorrectness);
-                        var ratingRequest = ratingLinkModifier(request);
+                        let rating = scrapperFunction(ratingSiteResponse, estCorrectness);
+                        let ratingRequest = ratingLinkModifier(request);
                         if(LINK_WEBSITES) {
                                 MPExtension.addRatingToContainer(ratingId, MPRatingFactory.wrapRatingWithLink(rating, ratingRequest));
                         } else {
@@ -1151,50 +1146,50 @@ function Rating () {
         *
         * return   Array: Link zum Ergebnis und HTML des Google-Ergebnisses oder null
         */
-                var bestCorrectnessResult = 0;
-                var bestSpamResult = 0;
-                var bestResultIndex = 0;
-                var foundCounter = 0;
-                var correctnessIndicator = 0;
-                var spamIndicator = 0;
-                var googleResultURLs = [];
-                var movieAliases = Rating.movieAliases;
+                let bestCorrectnessResult = 0;
+                let bestSpamResult = 0;
+                let bestResultIndex = 0;
+                let foundCounter = 0;
+                let correctnessIndicator = 0;
+                let spamIndicator = 0;
+                let googleResultURLs = [];
+                let movieAliases = Rating.movieAliases;
 
                 if(DEBUG_MODE && VERBOSE) {
                         log(googleResults.length + " results found. " + numberOfResultsIncluded + " results included.");
                 }
 
-                for(var k = 0; k < googleResults.length && k < numberOfResultsIncluded; k++) {
-                        var link = googleResults[k];
-                        var headline = link.querySelector("h3");
+                for(let k = 0; k < googleResults.length && k < numberOfResultsIncluded; k++) {
+                        let link = googleResults[k];
+                        let headline = link.querySelector("h3");
                         if (headline === null) {continue;}
-                        var title = link.querySelector("h3").innerHTML;
-                        var url = link.href;
-                        var infoDiv = "";
+                        let title = link.querySelector("h3").innerHTML;
+                        let url = link.href;
+                        let infoDiv = "";
 
                         if(!excludeUnplausibleYear || title.search(Rating.movieYear) > 0) {
                                 if(SEARCH_GOOGLE_RESULT_INFO) {
                                         infoDiv = currentResult.getElementsByClassName("st")[0].outerHTML;
                                 }
                                 title = Refinery.refineString(title)
-                                var regExp;
-                                for(var l = 0; l < blacklistedStrings.length; l++) { //delete unwanted strings
+                                let regExp;
+                                for(let l = 0; l < blacklistedStrings.length; l++) { //delete unwanted strings
                                         title = title.replace(blacklistedStrings[l], '');
                                 }
                                 title = title.replace(Rating.movieYear, '');
                                 title = Refinery.refineString(title);
-                                var titleSplits = title.split(' ');
+                                let titleSplits = title.split(' ');
 
                                 //Try to match movie titles with the results (and result infos)
-                                var j = 0;
+                                let j = 0;
                                 correctnessIndicator = 0;
                                 spamIndicator = 0;
                                 while(j < movieAliases.length && (bestCorrectnessResult < 1 || bestSpamResult < 1)) {
                                         foundCounter = 0;
-                                        var movieAliasSplits = movieAliases[j].split(' ');
+                                        let movieAliasSplits = movieAliases[j].split(' ');
                                         // Heuristic - at least half of the movie titles words have to be found in a result
-                                        for(var i = 0; i < movieAliasSplits.length; i++) {
-                                                var regExp = new RegExp('(^|\\s|>)'+movieAliasSplits[i]+'(\\s|$)', 'i');
+                                        for(let i = 0; i < movieAliasSplits.length; i++) {
+                                                let regExp = new RegExp('(^|\\s|>)'+movieAliasSplits[i]+'(\\s|$)', 'i');
                                                 if(titleSplits.reMatch(regExp) || (SEARCH_GOOGLE_RESULT_INFO && infoDiv.search(regExp) >= 0)) {
                                                         foundCounter++;
                                                 }
@@ -1226,7 +1221,7 @@ function Rating () {
                                 }
                         }
                 }
-                var indicator = bestCorrectnessResult * bestSpamResult;
+                let indicator = bestCorrectnessResult * bestSpamResult;
                 if(indicator >= 0.25) {
                         if (DEBUG_MODE && VERBOSE) {
                                 log("Final result: "+(bestResultIndex+1)+". Correct: "+bestCorrectnessResult+" Spam: "+bestSpamResult+" Result: "+indicator);
@@ -1249,14 +1244,14 @@ function Rating () {
         function getRatingByGoogle(googleResult) {
         /* Standard scrapper for Googles ratings */
 
-                var ratingDiv = googleResult.querySelector("div.f.slp")
+                let ratingDiv = googleResult.querySelector("div.f.slp")
                 if(ratingDiv !== null && ratingDiv.childNodes.length >= 2) {
-                        var ratingText = Refinery.refineHTML(ratingDiv.childNodes[1].nodeValue);
+                        let ratingText = Refinery.refineHTML(ratingDiv.childNodes[1].nodeValue);
                         ratingText = ratingText.match(/\d,?\d?\/10 - \d(\d|\.)*/);
                         if(ratingText !== null) {
                                 ratingText = ratingText[0].split('-')
-                                var rating = ratingText[0].trim();
-                                var ratingCount = ratingText[1].trim()
+                                let rating = ratingText[0].trim();
+                                let ratingCount = ratingText[1].trim()
                                 return MPRatingFactory.buildRating(Refinery.refineRating(rating), ratingSiteAbbr, Refinery.refineRatingCount(ratingCount), ratingRange, estCorrectness, ratingDivId);
                         }
                 }
@@ -1270,7 +1265,7 @@ function Rating () {
         * source       Anzeige-Information
         */
           if (this.REQ_SYNCHRONOUS) {  //synchronous or asynchronous
-            var response = GM.xmlHttpRequest({
+            let response = GM.xmlHttpRequest({
             	method: 'GET',
             	url: request,
             	synchronous: this.REQ_SYNCHRONOUS,
@@ -1293,7 +1288,7 @@ function Rating () {
                   if(response.status == 200) { //Successfull request
                     callback(request, response);
                   } else if(response.status >= 500 && response.status < 600) { //Server error
-                    var rating = null;
+                    let rating = null;
                     if(DEBUG_MODE) {
                       log("ERROR: Status-Code: " + response.status)
                     }
@@ -1315,7 +1310,7 @@ function Rating () {
 
         function parseToHTMLElement(html) {
         /* Parse a  */
-                var div = document.createElement("div");
+                let div = document.createElement("div");
                 div.innerHTML = html;
                 return div;
         }
@@ -1328,16 +1323,16 @@ function Rating () {
 
 function rtRatingScrapper(rtResponse, estCorrectness) {
 /* Rating-Scrapper for Rotten Tomatoes */
-        var rt_div = document.createElement('div');
+        let rt_div = document.createElement('div');
         rt_div.id = C_ID_RTRATINGS;
 
         // critics
-        var queryResult = rtResponse.querySelectorAll("div.tomato-left > div > div.superPageFontColor");
+        let queryResult = rtResponse.querySelectorAll("div.tomato-left > div > div.superPageFontColor");
         if(queryResult.length >=4) {
-                var critAvrRating   = queryResult[0].innerText.match(/\d(\.|,)?\d?/);
-                var critRatingCount = queryResult[1].innerText.match(/\d(\d|,|\.)*/);
-                var critFresh       = queryResult[2].innerText.match(/\d(\d|,|\.)*/);
-                var critRotten      = queryResult[3].innerText.match(/\d(\d|,|\.)*/);
+                let critAvrRating   = queryResult[0].innerText.match(/\d(\.|,)?\d?/);
+                let critRatingCount = queryResult[1].innerText.match(/\d(\d|,|\.)*/);
+                let critFresh       = queryResult[2].innerText.match(/\d(\d|,|\.)*/);
+                let critRotten      = queryResult[3].innerText.match(/\d(\d|,|\.)*/);
                 if(critRatingCount !== null) {
                         critRatingCount = critRatingCount[0]
                 }
@@ -1360,10 +1355,10 @@ function rtRatingScrapper(rtResponse, estCorrectness) {
         }
 
         // Audience
-        var queryResult = rtResponse.querySelectorAll("div.audience-info > div");
+        let queryResult = rtResponse.querySelectorAll("div.audience-info > div");
         if( queryResult.length >= 2) {
-                var audAvrRating   = queryResult[0].innerText.match(/\d\.?\d?/);
-                var audRatingCount = queryResult[1].innerText.match(/\d(\d|,|\.)*/);
+                let audAvrRating   = queryResult[0].innerText.match(/\d\.?\d?/);
+                let audRatingCount = queryResult[1].innerText.match(/\d(\d|,|\.)*/);
                 if(audAvrRating !== null && audRatingCount !== null) {
                         audAvrRating = audAvrRating[0];
                         audRatingCount = audRatingCount[0];
@@ -1380,29 +1375,29 @@ function rtRatingScrapper(rtResponse, estCorrectness) {
 
 function mcRatingScrapper(mcResponse, estCorrectness) {
 /* Rating-Scrapper for Metacritic */
-        var mc_div = document.createElement('div');
+        let mc_div = document.createElement('div');
         mc_div.id = C_ID_MCRATINGS;
 
-        var scoreDiv = mcResponse.querySelector("#nav_to_metascore");
-        var criticsDiv = scoreDiv.querySelector("div:nth-child(2) > div.distribution");
-        var ratingValue = criticsDiv.querySelector("div.metascore_w");
-        var posRatingCount = criticsDiv.querySelector("div.chart.positive > div > div.count");
-        var mixRatingCount = criticsDiv.querySelector("div.chart.mixed > div > div.count");
-        var negRatingCount = criticsDiv.querySelector("div.chart.negative > div > div.count");
+        let scoreDiv = mcResponse.querySelector("#nav_to_metascore");
+        let criticsDiv = scoreDiv.querySelector("div:nth-child(2) > div.distribution");
+        let ratingValue = criticsDiv.querySelector("div.metascore_w");
+        let posRatingCount = criticsDiv.querySelector("div.chart.positive > div > div.count");
+        let mixRatingCount = criticsDiv.querySelector("div.chart.mixed > div > div.count");
+        let negRatingCount = criticsDiv.querySelector("div.chart.negative > div > div.count");
         if(ratingValue !== null && posRatingCount !== null && mixRatingCount !== null && negRatingCount !== null) {
-                var ratingCount = parseInt(Refinery.refineRatingCount(posRatingCount.innerHTML)) + parseInt(Refinery.refineRatingCount(mixRatingCount.innerHTML)) + parseInt(Refinery.refineRatingCount(negRatingCount.innerHTML))
+                let ratingCount = parseInt(Refinery.refineRatingCount(posRatingCount.innerHTML)) + parseInt(Refinery.refineRatingCount(mixRatingCount.innerHTML)) + parseInt(Refinery.refineRatingCount(negRatingCount.innerHTML))
                 mc_div.appendChild(MPRatingFactory.buildRating(Refinery.refineRating(ratingValue.innerHTML), 'MC Metascore', ratingCount, '100', estCorrectness, C_ID_MCCRITICSRATING));
         } else {
                 mc_div.appendChild(MPRatingFactory.getNotYetRating('MC Metascore', '100', estCorrectness, C_ID_MCCRITICSRATING));
         }
 
-        var usersDiv = scoreDiv.querySelector("div:nth-child(3) > div.distribution");
-        var ratingValue = usersDiv.querySelector("div.metascore_w");
-        var posRatingCount = usersDiv.querySelector("div.chart.positive > div > div.count");
-        var mixRatingCount = usersDiv.querySelector("div.chart.mixed > div > div.count");
-        var negRatingCount = usersDiv.querySelector("div.chart.negative > div > div.count");
+        let usersDiv = scoreDiv.querySelector("div:nth-child(3) > div.distribution");
+        let ratingValue = usersDiv.querySelector("div.metascore_w");
+        let posRatingCount = usersDiv.querySelector("div.chart.positive > div > div.count");
+        let mixRatingCount = usersDiv.querySelector("div.chart.mixed > div > div.count");
+        let negRatingCount = usersDiv.querySelector("div.chart.negative > div > div.count");
         if(ratingValue !== null && posRatingCount !== null && mixRatingCount !== null && negRatingCount !== null) {
-                var ratingCount = parseInt(Refinery.refineRatingCount(posRatingCount.innerHTML)) + parseInt(Refinery.refineRatingCount(mixRatingCount.innerHTML)) + parseInt(Refinery.refineRatingCount(negRatingCount.innerHTML))
+                let ratingCount = parseInt(Refinery.refineRatingCount(posRatingCount.innerHTML)) + parseInt(Refinery.refineRatingCount(mixRatingCount.innerHTML)) + parseInt(Refinery.refineRatingCount(negRatingCount.innerHTML))
                 mc_div.appendChild(MPRatingFactory.buildRating(Refinery.refineRating(ratingValue.innerHTML), 'MC User Score', ratingCount, '10', estCorrectness, C_ID_MCCOMMUNITYRATING));
         } else {
                 mc_div.appendChild(MPRatingFactory.getNotYetRating('MC User Score', '10', estCorrectness, C_ID_MCCOMMUNITYRATING));
@@ -1412,20 +1407,20 @@ function mcRatingScrapper(mcResponse, estCorrectness) {
 
 function tmdbRatingScrapper(tmdbResponse, estCorrectness) {
 /* Rating-Scrapper for TheMovieDB */
-        var tmdb_div;
+        let tmdb_div;
 
-        var rating = null;
-        var ratingCount = null;
+        let rating = null;
+        let ratingCount = null;
 
         //release-info page
-        var ratingSpan = tmdbResponse.querySelector("span[itemprop=ratingValue]");
-        var ratingCountSpan = tmdbResponse.querySelector("span[itemprop=ratingCount]");
+        let ratingSpan = tmdbResponse.querySelector("span[itemprop=ratingValue]");
+        let ratingCountSpan = tmdbResponse.querySelector("span[itemprop=ratingCount]");
         if(ratingSpan !== null && ratingCountSpan !== null) {
                 rating =  ratingSpan.innerHTML;
                 ratingCount = ratingCountSpan.innerHTML;
         } else {
                 //common movie page
-                var ratingDiv = tmdbResponse.querySelector("div.user_score_chart");
+                let ratingDiv = tmdbResponse.querySelector("div.user_score_chart");
                 if(ratingDiv !== null) {
                         rating = ratingDiv.attributes[1].nodeValue;
                 }
@@ -1459,7 +1454,7 @@ function styleValueElement(element) {
 }
 
 function styleQuiteElement(element) {
-  element.style.margin  = "0px";
+  element.style.margin = "0px";
   element.style.padding = "0px";
   element.style.float = "left";
 }
@@ -1468,7 +1463,7 @@ function styleQuiteElement(element) {
 
 function getInfoFromLocalStorage(info) {
         if(typeof(Storage) !== "undefined") {
-                var result = localStorage.getItem(info);
+                let result = localStorage.getItem(info);
                         if(result === null) {  // not initialized
                         initializeLocalStorageFor(info);
                         return true;
