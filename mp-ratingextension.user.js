@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.1.0
+// @version       3.1.1
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -412,7 +412,7 @@ function collectEnglishMovieTitles(tmdbResponse) {
                 var title = titleDiv.childNodes[0].nodeValue
                 length = Rating.movieAliases.length;
                 match = Refinery.refineString(title);
-                pushStringToSet(Rating.movieAliases, Refinery.refineString(match));
+                prependStringToSet(Rating.movieAliases, Refinery.refineString(match));
                 moveStringToFirstPosition(Rating.movieAliases, Refinery.refineString(match));
                 if(length < Rating.movieAliases.length) {
                         MPExtension.addTitleToMP(match);
@@ -424,7 +424,7 @@ function collectEnglishMovieTitles(tmdbResponse) {
         if(titleSpan !== null) {
                 match = titleSpan.innerHTML;
                 length = Rating.movieAliases.length;
-                pushStringToSet(Rating.movieAliases, Refinery.refineString(match));
+                prependStringToSet(Rating.movieAliases, Refinery.refineString(match));
                 moveStringToFirstPosition(Rating.movieAliases, Refinery.refineString(match));
                 if(length < Rating.movieAliases.length) {
                         MPExtension.addTitleToMP(match);
@@ -440,7 +440,7 @@ function collectEnglishMovieTitles(tmdbResponse) {
                         if(country == "US" && (type == "" || type == "short title" || type =="Modern Title")) {
                                 match = table.children[i].children[0].innerHTML;
                                 length = Rating.movieAliases.length;
-                                addStringToSet(Rating.movieAliases, Refinery.refineString(match));
+                                appendStringToSet(Rating.movieAliases, Refinery.refineString(match));
                                 if(length < Rating.movieAliases.length) {
                                         MPExtension.addTitleToMP(match);
                                 }
@@ -815,8 +815,8 @@ function MPExtension() {
                 }
 
                 var titles = [];
-                addStringToSet(titles, Refinery.refineString(movieHeadline[0].innerHTML)); //MP movie title
-                getMovieAliases(movieData[0].children[0].innerHTML).forEach(function(currentValue, index, array){addStringToSet(titles, Refinery.refineString(currentValue));}); //MP alternative titles
+                appendStringToSet(titles, Refinery.refineString(movieHeadline[0].innerHTML)); //MP movie title
+                getMovieAliases(movieData[0].children[0].innerHTML).forEach(function(currentValue, index, array){appendStringToSet(titles, Refinery.refineString(currentValue));}); //MP alternative titles
 
                 var year;
                 var i = 0;
@@ -958,63 +958,63 @@ function MPExtension() {
         }
 }
 
-function addStringToSet(array, string){
-/* Adds a string at the highest index of an array of unique strings (simple JavaScript push), if the string isn't found in it */
-        var i = 0;
-        var found = false;
-        var regEx = new RegExp("^"+string+"$", "i");
-        while(i < array.length && found === false) {
-                if(array[i].search(regEx) >= 0) {
-                        found = true;
-                }
-                i++;
-        }
-        if(found !== true) {
-                array.push(string);
-        }
+/**
+ * Regular Expresion IndexOf for Arrays
+ * This little addition to the Array prototype will iterate over array
+ * and return the index of the first element which matches the provided
+ * regular expresion.
+ * Note: This will not match on objects.
+ * @param  {RegEx}   rx The regular expression to test with. E.g. /-ba/gim
+ * @return {Numeric} -1 means not found
+ */
+if (typeof Array.prototype.reIndexOf === 'undefined') {
+  Array.prototype.reIndexOf = function (rx) {
+    for (var i in this) {
+      if (this[i].toString().match(rx)) {
+        return i;
+      }
+    }
+    return -1;
+  };
 }
 
-function pushStringToSet(array, string){
-/* Pushes a string to index 0 of an array of unique strings, if the string isn't found in it */
-        var i = 0;
-        var found = false;
-        var regEx = new RegExp("^"+string+"$", "i");
-        while(i < array.length && found === false) {
-                if(array[i].search(regEx) >= 0) {
-                        found = true;
-                }
-                i++;
-        }
-        if(found !== true) {
-                array.unshift(string);
-        }
+/**
+ * Adds a string at the highest index of an array
+ * of unique strings (simple JavaScript push),
+ * if the string isn't found in it
+ */
+function appendStringToSet(array, string) {
+  var regEx = new RegExp("^" + string + "$", "i");
+  if (!matchInArray(array, regEx)) {
+    array.push(string);
+  }
+}
+
+/**
+ * Pushes a string to index 0 of an array of unique strings,
+ * if the string isn't found in it
+ */
+function prependStringToSet(array, string){
+  var regEx = new RegExp("^" + string + "$", "i");
+  if (!matchInArray(array, regEx)) {
+    array.unshift(string);
+  }
 }
 
 function moveStringToFirstPosition(array, string) {
-        var i = 0;
-        var found = false;
-        var regEx = new RegExp("^"+string+"$", "i");
-        while(i < array.length && found === false) {
-                if(array[i].search(regEx) >= 0) {
-                        found = true;
-                }
-                i++;
-        }
-        if(found === true && array.length > 1) {
-                var swap = array[0];
-                array[0] = string;
-                array[i-1] = swap;
-        }
+  var regEx = new RegExp("^"+string+"$", "i");
+  var index = array.reIndexOf(regEx)
+
+  if (index > 0) {
+    var swap = array[0];
+    array[0] = string;
+    array[i-1] = swap;
+  }
 }
 
-function matchInArray(array, expression) {
 /* Search an array of string for a regular expression */
-        for(var i = 0; i < array.length; i++) {
-                if(array[i].match(expression)) {
-                        return true;
-                }
-        }
-        return false;
+function matchInArray(array, expression) {
+  return array.reIndexOf(expression) !== -1;
 }
 
 
