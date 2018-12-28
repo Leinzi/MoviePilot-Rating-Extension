@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.0.2
+// @version       3.1.0
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -43,7 +43,7 @@ var C_ID_MCCOMMUNITYRATING = 'mcComRating';
 var C_ID_TMDBRATING = 'tmdbRating';
 var C_ID_WIKIINFO = 'wikiInfo';
 
-var DEBUG_MODE = false;
+var DEBUG_MODE = true;
 var VERBOSE = true;
 //------/Constants---------------
 
@@ -169,8 +169,183 @@ Refinery.pattern = [
   new Pattern("%C3%BA","ú"),
 ]
 
+/* Factory for MP elements */
+class MPRatingFactory {
+
+  /* Rebuild the rating structure of MP to show external ratings */
+  static buildRating(rating, source, ratingCount, range, estCorrectness, id) {
+    var ratingWrapper = MPRatingFactory._createWrapper(id);
+    var ratingValue = MPRatingFactory._createValue(rating);
+    ratingWrapper.appendChild(ratingValue);
+    var ratingInfo = MPRatingFactory._createInfo(source, ratingCount + " Bewertungen", "Skala 0 bis " + range);
+    ratingWrapper.appendChild(ratingInfo);
+
+    if (estCorrectness !== Rating.correctness.LOW) {
+      var estimatedCorrectness = MPRatingFactory._createEstCorrectness(estCorrectness);
+      ratingWrapper.appendChild(estimatedCorrectness);
+    }
+    return ratingWrapper;
+  }
+
+  /* Rebuild the rating structure of MP to show external information */
+  static buildInfo(source, sourceInfo, estCorrectness, id) {
+    var infoWrapper = MPRatingFactory._createWrapper(id);
+    var infoValue = MPRatingFactory._createValue("i");
+    infoWrapper.appendChild(infoValue);
+    var sourceInfoSplit = sourceInfo.split(/(^.{0,20} )/);
+    var infoInfo = MPRatingFactory._createInfo(source, sourceInfoSplit[1], sourceInfoSplit[2]);
+    infoWrapper.appendChild(infoInfo);
+
+    if (estCorrectness !== Rating.correctness.LOW) {
+      var estimatedCorrectness = MPRatingFactory._createEstCorrectness(estCorrectness);
+      infoWrapper.appendChild(estimatedCorrectness);
+    }
+    return infoWrapper;
+  }
+
+  /* MPs rating wrapper*/
+  static _createWrapper(id) {
+    var wrapper = document.createElement('div');
+    wrapper.id = id;
+    wrapper.className = "criticscount";
+    wrapper.style.width = "180px";
+    wrapper.style.margin = "0px 25px 0px 25px";
+    wrapper.style.padding = "0px";
+    wrapper.style.float = "left";
+
+    if (getInfoFromLocalStorage(id)) {
+      wrapper.style.display = 'inline';
+    } else {
+      wrapper.style.display = 'none';
+    }
+    return wrapper;
+  }
+
+  /* MPs rating */
+  static _createValue(value) {
+    var valueSpan = document.createElement('span');
+    valueSpan.className = "huge";
+    valueSpan.innerHTML = value;
+    valueSpan.style.width = "35px";
+    valueSpan.style.margin = "10px 3px 0px 0px";
+    valueSpan.style.padding = "0px";
+    valueSpan.style.float = "left";
+    valueSpan.style.textAlign = "center";
+    return valueSpan;
+  }
+
+  /* MPs rating infos */
+  static _createInfo(title, description, descriptionExp) {
+    var info = document.createElement('div');
+    info.className = "quite";
+    info.style.margin  = "0px";
+    info.style.padding = "0px";
+    info.style.float = "left";
+
+    var infoSource = document.createTextNode(title);
+    info.appendChild(infoSource);
+    info.appendChild(document.createElement('br'));
+
+    var infoDesc = document.createElement('span');
+    infoDesc.innerHTML = description;
+    info.appendChild(infoDesc);
+    info.appendChild(document.createElement('br'));
+
+    var infoDescExp = document.createElement('span');
+    infoDescExp.className = "small";
+    infoDescExp.innerHTML = descriptionExp;
+    info.appendChild(infoDescExp);
+
+    return info;
+  }
+
+  /* Display for the estimated correctness of a added rating */
+  static _createEstCorrectness(correctness) {
+    var tooltipText = "Matching correctness is: ";
+    var estimationInfo = document.createElement('div');
+    estimationInfo.className = "correctness";
+    estimationInfo.style.margin = "15px 10px 15px 0px";
+    estimationInfo.style.padding = "0px";
+    estimationInfo.style.float = "right";
+
+    var circle = document.createElement('div');
+    circle.style.width = "10px";
+    circle.style.height = "10px";
+    circle.style.borderRadius = "5px";
+    if (correctness === Rating.correctness.PERFECT) {
+      circle.style.color = "#00FF00";
+      circle.style.background = "#00FF00";
+      tooltipText = tooltipText + "Perfect";
+    } else if (correctness === Rating.correctness.GOOD) {
+      circle.style.color = "#3FBF00";
+      circle.style.background = "#3FBF00";
+      tooltipText = tooltipText + "Good";
+    } else if (correctness === Rating.correctness.OKAY) {
+      circle.style.color = "#FFFF00";
+      circle.style.background = "#FFFF00";
+      tooltipText = tooltipText + "Okay";
+    } else if (correctness === Rating.correctness.BAD) {
+      circle.style.color = "#FF7F00";
+      circle.style.background = "#FF7F00";
+      tooltipText = tooltipText + "Bad";
+    }
+
+    var tooltip = document.createElement('span');
+    tooltip.innerHTML = tooltipText;
+    tooltip.style.visibility = "hidden";
+    tooltip.style.width = "180px";
+    tooltip.style.heigth = "14px";
+    tooltip.style.color = "#FFFFFF";
+    tooltip.style.textAlign = "center";
+    tooltip.style.margin = "-5px 0px 0px 15px";
+    tooltip.style.borderRadius = "6px";
+    tooltip.style.background = "#696969";
+    tooltip.style.position = "absolute";
+    tooltip.style.zIndex = "1";
+    tooltip.style.opacity = "0";
+    tooltip.style.transition = "opacity 1s";
+
+    circle.appendChild(tooltip);
+    circle.onmouseover = function() {
+      tooltip.style.visibility = "visible";
+      tooltip.style.opacity = "1";
+    };
+    circle.onmouseout = function() {
+      tooltip.style.visibility = "hidden";
+      tooltip.style.opacity = "0";
+    };
+
+    estimationInfo.appendChild(circle);
+    return estimationInfo;
+  }
+
+  /* Default rating for ratings that haven't been found */
+  static getNotFoundRating(source, ratingRange, id) {
+    return this.buildRating('X', source, '0', ratingRange, Rating.correctness.LOW, id);
+  }
+
+  /* Default rating for movies that have been found, but aren't released yet */
+  static getNotYetRating(source, ratingRange, correctness, id) {
+    return this.buildRating('-', source, '0', ratingRange, correctness, id);
+  }
+
+  /* Default rating for faulty requests */
+  static getErrorRating(source, ratingRange, id) {
+    return this.buildRating('E', source, '0', ratingRange, Rating.correctness.LOW, id);
+  }
+
+  /* Wrap the MP rating structure in a link to the ratings website */
+  static wrapRatingWithLink(rating, movieURL) {
+    var linkedRating = document.createElement('a');
+    linkedRating.appendChild(rating);
+    linkedRating.title = movieURL;
+    linkedRating.href = movieURL;
+    return linkedRating;
+  }
+}
+
 // var Refinery = new Refinery();
-var MPRatingFactory = new MPRatingFactory();
+// var MPRatingFactory = new MPRatingFactory();
 var MPExtension = new MPExtension();
 
 if(!MPExtension.setupExtension()){
@@ -1106,50 +1281,48 @@ function Rating () {
         * request      Ziel-URL mit Request
         * source       Anzeige-Information
         */
-                if (this.REQ_SYNCHRONOUS) {  //synchronous or asynchronous
-                        var response = GM.xmlHttpRequest({
-                        	method: 'GET',
-                        	url: request,
-                        	synchronous: this.REQ_SYNCHRONOUS,
-                        	timeout: this.REQ_TIMEOUT,
-                        	ontimeout: function(response) {console.log("Timeout(MP-Rating-Extension):  "+request);}
-                        });
-                        if(response.status == 200) {
-                        	ratingObject.callback(request, response);
-                        } else {
-                        	alert("Error: No synchornous operation.");
-                        }
-                } else {
-                        GM.xmlHttpRequest({
-                                method: 'GET',
-                                url: request,
-                                synchronous: this.REQ_SYNCHRONOUS,
-                                timeout: this.REQ_TIMEOUT,
-                                onreadystatechange: function(response) {
-                                        if(response.readyState == 4) {
-                                                if(response.status == 200) { //Successfull request
-                                                        callback(request, response);
-                                                } else if(response.status >= 500 && response.status < 600) { //Server error
-                                                        var rating = null;
-                                                        if(DEBUG_MODE) {
-                                                                log("ERROR: Status-Code: " + response.status)
-                                                        }
-                                                        if(response.finalUrl.match(/(ipv4|ipv6).google.(de|com)\/sorry/) !== null) { //Blocked by Google; Too many requests
-                                                                MPExtension.appendNewContainer('google');
-                                                                rating = MPRatingFactory.wrapRatingWithLink(MPRatingFactory.buildInfo('Google blocked','Click and enter captcha to unlock', 'google'), request);
-                                                                MPExtension.addRatingToContainer('google', rating);
-                                                        }
-                                                } else { //Default error
-                                                        if(DEBUG_MODE) {
-                                                                log("ERROR: Status-Code: " + response.status)
-                                                        }
-                                                        rating = MPRatingFactory.getErrorRating(ratingSite, ratingRange, ratingDivId);
-                                                        MPExtension.addRatingToContainer(ratingId, rating);
-                                                }
-                                        }
-                                }
-                        });
+          if (this.REQ_SYNCHRONOUS) {  //synchronous or asynchronous
+            var response = GM.xmlHttpRequest({
+            	method: 'GET',
+            	url: request,
+            	synchronous: this.REQ_SYNCHRONOUS,
+            	timeout: this.REQ_TIMEOUT,
+            	ontimeout: function(response) {console.log("Timeout(MP-Rating-Extension):  "+request);}
+            });
+            if(response.status == 200) {
+            	ratingObject.callback(request, response);
+            } else {
+            	alert("Error: No synchornous operation.");
+            }
+          } else {
+            GM.xmlHttpRequest({
+              method: 'GET',
+              url: request,
+              synchronous: this.REQ_SYNCHRONOUS,
+              timeout: this.REQ_TIMEOUT,
+              onreadystatechange: function(response) {
+                if(response.readyState == 4) {
+                  if(response.status == 200) { //Successfull request
+                    callback(request, response);
+                  } else if(response.status >= 500 && response.status < 600) { //Server error
+                    var rating = null;
+                    if(DEBUG_MODE) {
+                      log("ERROR: Status-Code: " + response.status)
+                    }
+                    MPExtension.appendNewContainer('google');
+                    rating = MPRatingFactory.wrapRatingWithLink(MPRatingFactory.buildInfo('Google blocked','Click and enter captcha to unlock', 'google'), request);
+                    MPExtension.addRatingToContainer('google', rating);
+                  } else { //Default error
+                    if(DEBUG_MODE) {
+                      log("ERROR: Status-Code: " + response.status)
+                    }
+                    rating = MPRatingFactory.getErrorRating(ratingSite, ratingRange, ratingDivId);
+                    MPExtension.addRatingToContainer(ratingId, rating);
+                  }
                 }
+              }
+            });
+          }
         }
 
         function parseToHTMLElement(html) {
@@ -1281,172 +1454,6 @@ function tmdbRatingScrapper(tmdbResponse, estCorrectness) {
         return tmdb_div;
 }
 
-function MPRatingFactory() {
-/* Factory for MP elements */
-
-        this.buildRating = function(rating, source, ratingCount, range, estCorrectness, id) {
-        /* Rebuild the rating structure of MP to show external ratings */
-                var ratingWrapper = createWrapper(id);
-                var ratingValue = createValue(rating);
-                ratingWrapper.appendChild(ratingValue);
-                var ratingInfo = createInfo(source, ratingCount+" Bewertungen", "Skala 0 bis "+range);
-                ratingWrapper.appendChild(ratingInfo);
-                if(estCorrectness != Rating.correctness.LOW) {
-                        var estimatedCorrectness = createEstCorrectness(estCorrectness);
-                        ratingWrapper.appendChild(estimatedCorrectness);
-                }
-                return ratingWrapper;
-        };
-
-        this.buildInfo = function(source, sourceInfo, estCorrectness, id) {
-        /* Rebuild the rating structure of MP to show external information */
-                var infoWrapper = createWrapper(id);
-                var infoValue = createValue("i");
-                infoWrapper.appendChild(infoValue);
-                var sourceInfoSplit = sourceInfo.split(/(^.{0,20} )/);
-                var infoInfo = createInfo(source, sourceInfoSplit[1], sourceInfoSplit[2]);
-                infoWrapper.appendChild(infoInfo);
-                if(estCorrectness != Rating.correctness.LOW) {
-                        var estimatedCorrectness = createEstCorrectness(estCorrectness);
-                        infoWrapper.appendChild(estimatedCorrectness);
-                }
-                return infoWrapper;
-        };
-
-        var createWrapper = function(id) {
-        /* MPs rating wrapper*/
-                var wrapper = document.createElement('div');
-                wrapper.id            = id;
-                wrapper.className     = "criticscount";
-                wrapper.style.width   = "180px";
-                wrapper.style.margin  = "0px 25px 0px 25px";
-                wrapper.style.padding = "0px";
-                wrapper.style.float   = "left";
-                if(getInfoFromLocalStorage(id)) {
-                        wrapper.style.display = 'inline';
-                } else {
-                        wrapper.style.display = 'none';
-                }
-                return wrapper;
-        };
-
-        var createValue = function(value) {
-        /* MPs rating */
-                var valueSpan = document.createElement('span');
-                valueSpan.className     = "huge";
-                valueSpan.innerHTML     = value;
-                valueSpan.style.width   = "35px";
-                valueSpan.style.margin  = "10px 3px 0px 0px";
-                valueSpan.style.padding = "0px";
-                valueSpan.style.float   = "left";
-                valueSpan.style.textAlign = "center";
-                return valueSpan;
-        };
-
-        var createInfo = function(title, description, descriptionExp) {
-        /* MPs rating infos */
-                var info = document.createElement('div');
-                info.className     = "quite";
-                info.style.margin  = "0px";
-                info.style.padding = "0px";
-                info.style.float   = "left";
-
-                var infoSource = document.createTextNode(title);
-                info.appendChild(infoSource);
-                info.appendChild(document.createElement('br'));
-
-                var infoDesc = document.createElement('span');
-                infoDesc.innerHTML = description;
-                info.appendChild(infoDesc);
-                info.appendChild(document.createElement('br'));
-
-                var infoDescExp = document.createElement('span');
-                infoDescExp.className = "small";
-                infoDescExp.innerHTML = descriptionExp;
-                info.appendChild(infoDescExp);
-
-                return info;
-        };
-
-        var createEstCorrectness = function(correctness) {
-        /* Display for the estimated correctness of a added rating */
-                var tooltipText = "Matching correctness is: ";
-                var estimationInfo = document.createElement('div');
-                estimationInfo.className     = "correctness";
-                estimationInfo.style.margin  = "15px 10px 15px 0px";
-                estimationInfo.style.padding = "0px";
-                estimationInfo.style.float   = "right";
-
-                var circle = document.createElement('div');
-                circle.style.width = "10px";
-                circle.style.height = "10px";
-                circle.style.borderRadius = "5px";
-                if(correctness == Rating.correctness.PERFECT) {
-                        circle.style.color = "#00FF00";
-                        circle.style.background = "#00FF00";
-                        tooltipText = tooltipText+"Perfect";
-                } else if(correctness == Rating.correctness.GOOD) {
-                        circle.style.color = "#3FBF00";
-                        circle.style.background = "#3FBF00";
-                        tooltipText = tooltipText+"Good";
-                } else if(correctness == Rating.correctness.OKAY) {
-                        circle.style.color = "#FFFF00";
-                        circle.style.background = "#FFFF00";
-                        tooltipText = tooltipText+"Okay";
-                }else if(correctness == Rating.correctness.BAD) {
-                        circle.style.color = "#FF7F00";
-                        circle.style.background = "#FF7F00";
-                        tooltipText = tooltipText+"Bad";
-                }
-
-                var tooltip = document.createElement('span');
-                tooltip.innerHTML = tooltipText;
-                tooltip.style.visibility = "hidden";
-                tooltip.style.width = "180px";
-                tooltip.style.heigth = "14px";
-                tooltip.style.color = "#FFFFFF";
-                tooltip.style.textAlign = "center";
-                tooltip.style.margin = "-5px 0px 0px 15px";
-                tooltip.style.borderRadius = "6px";
-                tooltip.style.background = "#696969";
-                tooltip.style.position = "absolute";
-                tooltip.style.zIndex = "1";
-                tooltip.style.opacity = "0";
-                tooltip.style.transition = "opacity 1s";
-
-                circle.appendChild(tooltip);
-                circle.onmouseover = function(){tooltip.style.visibility = "visible"; tooltip.style.opacity = "1";};
-                circle.onmouseout = function(){tooltip.style.visibility = "hidden"; tooltip.style.opacity = "0";};
-
-                estimationInfo.appendChild(circle);
-
-                return estimationInfo;
-        };
-
-        this.getNotFoundRating = function(source, ratingRange, id) {
-        /* Default rating for ratings that haven't been found */
-                return this.buildRating('X', source, '0', ratingRange, Rating.correctness.LOW, id);
-        };
-
-        this.getNotYetRating = function(source, ratingRange, correctness, id) {
-        /* Default rating for movies that have been found, but aren't released yet */
-                return this.buildRating('-', source, '0', ratingRange, correctness, id);
-        };
-
-        this.getErrorRating = function(source, ratingRange, id) {
-        /* Default rating for faulty requests */
-                return this.buildRating('E', source, '0', ratingRange, Rating.correctness.LOW, id);
-        };
-
-        this.wrapRatingWithLink = function(rating, movieURL) {
-        /* Wrap the MP rating structure in a link to the ratings website */
-                var linkedRating = document.createElement('a');
-                linkedRating.appendChild(rating);
-                linkedRating.title = movieURL;
-                linkedRating.href = movieURL;
-                return linkedRating;
-        };
-}
 
 
 //-----LOCALSTORAGE-ADAPTER------------
