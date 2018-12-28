@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.2.1
+// @version       3.2.2
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -356,17 +356,17 @@ class MPRatingFactory {
 
   /* Default rating for ratings that haven't been found */
   static getNotFoundRating(source, ratingRange, id) {
-    return this.buildRating('X', source, '0', ratingRange, Rating.correctness.LOW, id);
+    return MPRatingFactory.buildRating('X', source, '0', ratingRange, Rating.correctness.LOW, id);
   }
 
   /* Default rating for movies that have been found, but aren't released yet */
   static getNotYetRating(source, ratingRange, correctness, id) {
-    return this.buildRating('-', source, '0', ratingRange, correctness, id);
+    return MPRatingFactory.buildRating('-', source, '0', ratingRange, correctness, id);
   }
 
   /* Default rating for faulty requests */
   static getErrorRating(source, ratingRange, id) {
-    return this.buildRating('E', source, '0', ratingRange, Rating.correctness.LOW, id);
+    return MPRatingFactory.buildRating('E', source, '0', ratingRange, Rating.correctness.LOW, id);
   }
 
   /* Wrap the MP rating structure in a link to the ratings website */
@@ -381,7 +381,7 @@ class MPRatingFactory {
 
 // var Refinery = new Refinery();
 // var MPRatingFactory = new MPRatingFactory();
-let MPExtension = new MPExtension();
+var MPExtension = new MPExtension();
 
 if(!MPExtension.setupExtension()){
         return false;
@@ -940,7 +940,7 @@ function MPExtension() {
                 resultString += rating+"/"+ratingRange+"\t"+ratingInfo+"\t(Bewertungen: "+ratingCount+")";
 
                 rating = otherRatings[0].children[0].innerHTML;
-                let ratingRange = "10";
+                ratingRange = "10";
                 ratingCount = otherRatings[0].children[1].children[1].innerHTML.match(/\d*/)[0];
                 ratingInfo = "MP Kritiker";
                 tabs = "\t";
@@ -1355,7 +1355,7 @@ function rtRatingScrapper(rtResponse, estCorrectness) {
         }
 
         // Audience
-        let queryResult = rtResponse.querySelectorAll("div.audience-info > div");
+        queryResult = rtResponse.querySelectorAll("div.audience-info > div");
         if( queryResult.length >= 2) {
                 let audAvrRating   = queryResult[0].innerText.match(/\d\.?\d?/);
                 let audRatingCount = queryResult[1].innerText.match(/\d(\d|,|\.)*/);
@@ -1373,36 +1373,38 @@ function rtRatingScrapper(rtResponse, estCorrectness) {
         return rt_div;
 }
 
-function mcRatingScrapper(mcResponse, estCorrectness) {
 /* Rating-Scrapper for Metacritic */
-        let mc_div = document.createElement('div');
-        mc_div.id = C_ID_MCRATINGS;
+function mcRatingScrapper(mcResponse, estCorrectness) {
+  let mcDiv = document.createElement('div');
+  mcDiv.id = C_ID_MCRATINGS;
 
-        let scoreDiv = mcResponse.querySelector("#nav_to_metascore");
-        let criticsDiv = scoreDiv.querySelector("div:nth-child(2) > div.distribution");
-        let ratingValue = criticsDiv.querySelector("div.metascore_w");
-        let posRatingCount = criticsDiv.querySelector("div.chart.positive > div > div.count");
-        let mixRatingCount = criticsDiv.querySelector("div.chart.mixed > div > div.count");
-        let negRatingCount = criticsDiv.querySelector("div.chart.negative > div > div.count");
-        if(ratingValue !== null && posRatingCount !== null && mixRatingCount !== null && negRatingCount !== null) {
-                let ratingCount = parseInt(Refinery.refineRatingCount(posRatingCount.innerHTML)) + parseInt(Refinery.refineRatingCount(mixRatingCount.innerHTML)) + parseInt(Refinery.refineRatingCount(negRatingCount.innerHTML))
-                mc_div.appendChild(MPRatingFactory.buildRating(Refinery.refineRating(ratingValue.innerHTML), 'MC Metascore', ratingCount, '100', estCorrectness, C_ID_MCCRITICSRATING));
-        } else {
-                mc_div.appendChild(MPRatingFactory.getNotYetRating('MC Metascore', '100', estCorrectness, C_ID_MCCRITICSRATING));
-        }
+  let scoreDiv = mcResponse.querySelector("#nav_to_metascore");
+  let criticsDiv = scoreDiv.querySelector("div:nth-child(2) > div.distribution");
+  mcDiv.appendChild(buildMcRating(criticsDiv, 'MC Metascore', 100, estCorrectness, C_ID_MCCRITICSRATING))
 
-        let usersDiv = scoreDiv.querySelector("div:nth-child(3) > div.distribution");
-        let ratingValue = usersDiv.querySelector("div.metascore_w");
-        let posRatingCount = usersDiv.querySelector("div.chart.positive > div > div.count");
-        let mixRatingCount = usersDiv.querySelector("div.chart.mixed > div > div.count");
-        let negRatingCount = usersDiv.querySelector("div.chart.negative > div > div.count");
-        if(ratingValue !== null && posRatingCount !== null && mixRatingCount !== null && negRatingCount !== null) {
-                let ratingCount = parseInt(Refinery.refineRatingCount(posRatingCount.innerHTML)) + parseInt(Refinery.refineRatingCount(mixRatingCount.innerHTML)) + parseInt(Refinery.refineRatingCount(negRatingCount.innerHTML))
-                mc_div.appendChild(MPRatingFactory.buildRating(Refinery.refineRating(ratingValue.innerHTML), 'MC User Score', ratingCount, '10', estCorrectness, C_ID_MCCOMMUNITYRATING));
-        } else {
-                mc_div.appendChild(MPRatingFactory.getNotYetRating('MC User Score', '10', estCorrectness, C_ID_MCCOMMUNITYRATING));
-        }
-        return mc_div;
+  let usersDiv = scoreDiv.querySelector("div:nth-child(3) > div.distribution");
+  mcDiv.appendChild(buildMcRating(usersDiv, 'MC User Score', 10, estCorrectness, C_ID_MCCOMMUNITYRATING))
+
+  return mcDiv;
+
+  function buildMcRating(div, title, maximum, estCorrectness, containerId) {
+    let ratingValue = div.querySelector("div.metascore_w");
+    let posRatingCount = div.querySelector("div.chart.positive > div > div.count");
+    let mixRatingCount = div.querySelector("div.chart.mixed > div > div.count");
+    let negRatingCount = div.querySelector("div.chart.negative > div > div.count");
+
+    if (ratingValue !== null && posRatingCount !== null && mixRatingCount !== null && negRatingCount !== null) {
+      let posRatings = parseInt(Refinery.refineRatingCount(posRatingCount.innerHTML))
+      let mixRatings = parseInt(Refinery.refineRatingCount(mixRatingCount.innerHTML))
+      let negRatings = parseInt(Refinery.refineRatingCount(negRatingCount.innerHTML))
+      let ratingCount = posRatings + mixRatings + negRatings
+
+      let value = Refinery.refineRating(ratingValue.innerHTML)
+      return MPRatingFactory.buildRating(value, title, ratingCount, maximum, estCorrectness, containerId);
+    } else {
+      return MPRatingFactory.getNotYetRating(title, maximum, estCorrectness, containerId);
+    }
+  }
 }
 
 function tmdbRatingScrapper(tmdbResponse, estCorrectness) {
