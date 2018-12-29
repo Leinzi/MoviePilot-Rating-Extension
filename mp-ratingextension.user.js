@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.3.3
+// @version       3.3.4
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -410,7 +410,6 @@ class Movie {
 
     appendStringToSet(Movie.aliases, Refinery.refineString(movieHeadline.innerText)); //MP movie title
     Movie._getMovieAliases(movieData.innerText).forEach(function(currentValue) {
-      console.log("next: " + currentValue)
       appendStringToSet(Movie.aliases, Refinery.refineString(currentValue));
     }); //MP alternative titles
 
@@ -1238,7 +1237,7 @@ function Rating () {
       synchronous: false,
       timeout: this.REQ_TIMEOUT,
       onreadystatechange: function(response) {
-        if (response.readyState == 4) { return; }
+        if (response.readyState !== 4) { return; }
         if (response.status == 200) { //Successful request
           callback(request, response);
         } else if (response.status >= 500 && response.status < 600) { //Server error
@@ -1340,6 +1339,10 @@ function mcRatingScrapper(mcResponse, estCorrectness) {
   return mcDiv;
 
   function buildMcRating(div, title, maximum, estCorrectness, containerId) {
+    if (div == null) {
+      return MPRatingFactory.getNotYetRating(title, maximum, estCorrectness, containerId);
+    }
+
     let ratingValue = div.querySelector("div.metascore_w");
     let posRatingCount = div.querySelector("div.chart.positive > div > div.count");
     let mixRatingCount = div.querySelector("div.chart.mixed > div > div.count");
