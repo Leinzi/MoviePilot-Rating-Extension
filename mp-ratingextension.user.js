@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.2.3
+// @version       3.2.4
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -46,6 +46,12 @@ const C_ID_WIKIINFO = 'wikiInfo';
 const DEBUG_MODE = false;
 const VERBOSE = true;
 //------/Constants---------------
+
+const REG_EX_TMDB = /(https?:\/\/)?www\.themoviedb\.org\/movie\/.*?(?=(\?|\/))/
+const REG_EX_IMDB = /(https?:\/\/)?www\.imdb\.com\/title\/.*?(?=(\?|\/))/
+const REG_EX_MC = /(https?:\/\/)?www\.metacritic\.com\/movie\/.*?(?=(\?|\/))/
+const REG_EX_RT = /(https?:\/\/)?www\.rottentomatoes\.com\/m\/.*?(?=(\?|\/))/);
+
 
 //-------Helper---------------
 /**
@@ -397,10 +403,10 @@ Rating.movieAliases = movieData[0];
 Rating.movieYear = movieData[1];
 Rating.correctness = {PERFECT: 0, GOOD: 1, OKAY: 2, BAD: 3, POOR: 4};
 
-let tmdbRating = new Rating().ratingSite('TMDB').ratingSiteAbbr('TMDB').ratingId('tmdb').ratingDivId(C_ID_TMDBRATING).websiteURL('https://www.themoviedb.org/movie/').scrapperFunction(tmdbRatingScrapper).responseSiteHookFunction(collectEnglishMovieTitles).numberOfResultsIncluded(10).blacklist(new RegExp(/\s?TMDb$/i)).blacklist(new RegExp(/(?:(?=The Movie Database)The Movie Database|(?=The Movie)The Movie|(?=The)The)$/i)).blacklist(new RegExp(/Recommended Movies/i)).ratingLinkModifier(tmdbLinkModifier).ratingRequestModifier(tmdbRequestModifier);
-let imdbRating = new Rating().ratingSite('IMDB').ratingSiteAbbr('IMDB').ratingRange('10').ratingId('imdb').ratingDivId(C_ID_IMDBRATING).websiteURL('www.imdb.com/title').googleRating().numberOfResultsIncluded(5).blacklist(new RegExp(/IMDb$/i)).blacklist(new RegExp(/TV Movie/i)).ratingRequestModifier(imdbRequestModifier);
-let rtRating = new Rating().ratingSite('rotten tomatoes').ratingSiteAbbr('RT').ratingId('rt').ratingDivId(C_ID_RTRATINGS).websiteURL('www.rottentomatoes.com/m/').scrapperFunction(rtRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/(?:(?=Rotten Tomatoes)Rotten Tomatoes|(?=Rotten)Rotten)$/i)).blacklist(new RegExp(Rating.movieYear+ " Original", "i")).ratingRequestModifier(rtRequestModifier);
-let mcRating = new Rating().ratingSite('metacritic').ratingSiteAbbr('MC').ratingId('mc').ratingDivId(C_ID_MCRATINGS).websiteURL('www.metacritic.com/movie/').scrapperFunction(mcRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/Metacritic$/i)).blacklist(new RegExp(/Reviews/i)).ratingRequestModifier(mcRequestModifier);
+let tmdbRating = new Rating().ratingSite('TMDB').ratingSiteAbbr('TMDB').ratingId('tmdb').ratingDivId(C_ID_TMDBRATING).websiteURL('https://www.themoviedb.org/movie/').scrapperFunction(tmdbRatingScrapper).responseSiteHookFunction(collectEnglishMovieTitles).numberOfResultsIncluded(10).blacklist(new RegExp(/\s?TMDb$/i)).blacklist(new RegExp(/(?:(?=The Movie Database)The Movie Database|(?=The Movie)The Movie|(?=The)The)$/i)).blacklist(new RegExp(/Recommended Movies/i)).urlRegEx(REG_EX_TMDB).languageModifier('en');
+let imdbRating = new Rating().ratingSite('IMDB').ratingSiteAbbr('IMDB').ratingRange('10').ratingId('imdb').ratingDivId(C_ID_IMDBRATING).websiteURL('www.imdb.com/title').googleRating().numberOfResultsIncluded(5).blacklist(new RegExp(/IMDb$/i)).blacklist(new RegExp(/TV Movie/i)).urlRegEx(REG_EX_IMDB);
+let rtRating = new Rating().ratingSite('rotten tomatoes').ratingSiteAbbr('RT').ratingId('rt').ratingDivId(C_ID_RTRATINGS).websiteURL('www.rottentomatoes.com/m/').scrapperFunction(rtRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/(?:(?=Rotten Tomatoes)Rotten Tomatoes|(?=Rotten)Rotten)$/i)).blacklist(new RegExp(Rating.movieYear+ " Original", "i")).urlRegEx(REG_EX_RT);
+let mcRating = new Rating().ratingSite('metacritic').ratingSiteAbbr('MC').ratingId('mc').ratingDivId(C_ID_MCRATINGS).websiteURL('www.metacritic.com/movie/').scrapperFunction(mcRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/Metacritic$/i)).blacklist(new RegExp(/Reviews/i)).urlRegEx(REG_EX_MC);
 let wikiInfo = new Rating().ratingSite('Wikipedia').ratingSiteAbbr('wiki').ratingId('wiki').ratingDivId(C_ID_WIKIINFO).websiteURL('en.wikipedia.org').info().description('The Free Encyclopedia').numberOfResultsIncluded(5).blacklist(new RegExp(/(film)?\s*(?:(?=Wikipedia the free encyclopedia)Wikipedia the free encyclopedia|(?=Wikipedia the free)Wikipedia the free|(?=Wikipedia)Wikipedia)$/i)).googleRequestModifier(wikiRequestModifier);
 
 MPExtension.addRating("imdb", imdbRating, [[C_ID_IMDBRATING, 'IMDB Bewertungen anzeigen']]);
@@ -486,50 +492,19 @@ function collectEnglishMovieTitles(tmdbResponse) {
 }
 
 /* Request modifiers - transform the request URL */
-function tmdbRequestModifier(url) {
-  let refinedUrl = url.match(/(https?:\/\/)?www\.themoviedb\.org\/movie\/.*?(?=(\?|\/))/);
-  if (refinedUrl !== null) {
-    refinedUrl = refinedUrl[0];
-  } else {
-    return url.replace(/((\?language=[a-z]{2}(-[A-Z]{2})?|\/de)?$)/, '?language=en');
-  }
-  //return refinedUrl + "/release-info?language=en";
-  return refinedUrl + "?language=en";
-}
-
-function tmdbLinkModifier(url) {
-  let refinedUrl = url.match(/(https?:\/\/)?www\.themoviedb\.org\/movie\/.*?(?=(\?|\/))/);
+function requestModifier(url, regEx, languageModifier = null) {
+  let refinedUrl = url.match(regEx);
   if (refinedUrl !== null) {
     refinedUrl = refinedUrl[0];
   } else {
     refinedUrl = url;
   }
 
-  return refinedUrl.replace(/((\?language=[a-z]{2}(-[A-Z]{2})?|\/de)?$)/, '?language=en'); //the english website is needed
-}
-
-function imdbRequestModifier(url) {
-  let refinedUrl = url.match(/(https?:\/\/)?www\.imdb\.com\/title\/.*?(?=(\?|\/))/);
-  if (refinedUrl !== null) {
-    return refinedUrl[0];
+  if (languageModifier !== null) {
+    return refinedUrl.replace(/((\?language=[a-z]{2}(-[A-Z]{2})?|\/de)?$)/, '?language=' + languageModifier)
+  } else {
+    return refinedUrl
   }
-  return url;
-}
-
-function mcRequestModifier(url) {
-  let refinedUrl = url.match(/(https?:\/\/)?www\.metacritic\.com\/movie\/.*?(?=(\?|\/))/);
-  if (refinedUrl !== null) {
-    return refinedUrl[0];
-  }
-  return url;
-}
-
-function rtRequestModifier(url) {
-  let refinedUrl = url.match(/(https?:\/\/)?www\.rottentomatoes\.com\/m\/.*?(?=(\?|\/))/);
-  if (refinedUrl !== null) {
-    return refinedUrl[0];
-  }
-  return url;
 }
 
 function wikiRequestModifier(url) {
@@ -1023,8 +998,8 @@ function Rating () {
   let googleRequest="";
   let googleRequestModifier = function(url) {return url;}; 	//Modify Googles request URL
   let ratingRequest="";
-  let ratingRequestModifier = function(url) {return url;};	//Modify the request URL of the rating website
-  let ratingLinkModifier = function(url) {return url;}; // Modify the Link to the rating website
+  // let ratingRequestModifier = function(url) {return url;};	//Modify the request URL of the rating website
+  // let ratingLinkModifier = function(url) {return url;}; // Modify the Link to the rating website
   let ratingSourceTypes = {EXTERN: 0, GOOGLE: 1, INFO:2};		//Type of the rating; EXTERN for own rating scrapper, GOOGLE for standard Google scrapper, INFO for a information website without rating
   let ratingSourceType = ratingSourceTypes.EXTERN;		//Current type of the rating
   let numberOfResultsIncluded = 1;	//Number of Google results that should be included in a search
@@ -1034,6 +1009,9 @@ function Rating () {
   let scrapperFunction = null;	//Scrapper function
   let estCorrectness = Rating.correctness.LOW;	//Estimated correctness of a rating result
   let blacklistedStrings = []; //Backlist of regular expressions, that will be deleted from char sequences like titles and infos
+
+  let urlRegEx = ""
+  let languageModifier = null
 
   let callback;
   const SEARCH_GOOGLE_RESULT_INFO = false;	//Search Googles infos to a result for matches too
@@ -1050,8 +1028,8 @@ function Rating () {
   this.ratingDivId = function(string) {ratingDivId = string; return this;};
   this.websiteURL = function(string) {websiteURL = string; return this;};
   this.googleRequestModifier = function(func) {googleRequestModifier = func; return this;};
-  this.ratingRequestModifier = function(func) {ratingRequestModifier = func; return this;};
-  this.ratingLinkModifier = function(func) {ratingLinkModifier = func; return this;};
+  // this.ratingRequestModifier = function(func) {ratingRequestModifier = func; return this;};
+  // this.ratingLinkModifier = function(func) {ratingLinkModifier = func; return this;};
   this.externRating = function() {ratingSourceType = ratingSourceTypes.EXTERN; return this;};
   this.googleRating = function() {ratingSourceType = ratingSourceTypes.GOOGLE; return this;};
   this.info = function() {ratingSourceType = ratingSourceTypes.INFO; return this;};
@@ -1061,6 +1039,15 @@ function Rating () {
   this.responseSiteHookFunction = function(func) {responseSiteHookFunction = func; return this;};
   this.scrapperFunction = function(func) {scrapperFunction = func; return this;};
   this.blacklist = function(regex) {blacklistedStrings.push(regex); return this;};
+
+  this.urlRegEx = function(regex) {
+    urlRegEx = regex;
+    return this;
+  }
+  this.languageModifier = function(string) {
+    languageModifier = string;
+    return this;
+  }
 
   this.getRating = function() {
   /* Kick off the search */
@@ -1089,7 +1076,7 @@ function Rating () {
         log("Plausible google result found.");
       }
       ratingRequest = bestResult[0];
-      ratingRequest = ratingRequestModifier(ratingRequest);
+      ratingRequest = requestModifier(ratingRequest, urlRegEx, languageModifier);
 
       if (ratingSourceType == ratingSourceTypes.GOOGLE) {
         let rating = getRatingByGoogle(bestResult[1]);
@@ -1126,7 +1113,7 @@ function Rating () {
   function handleRatingSiteResponse (request, response) {
   /* Handler for rating site response */
     if (DEBUG_MODE) {
-      log("Rating site request successfull.");
+      log("Rating site request successful.");
     }
     let ratingSiteResponse = parseToHTMLElement(response.responseText)
     if (responseSiteHookFunction !== null) {
@@ -1134,7 +1121,7 @@ function Rating () {
     }
     if (scrapperFunction !== null) {
       let rating = scrapperFunction(ratingSiteResponse, estCorrectness);
-      let ratingRequest = ratingLinkModifier(request);
+      let ratingRequest = requestModifier(request, urlRegEx, languageModifier);
       if (LINK_WEBSITES) {
         MPExtension.addRatingToContainer(ratingId, MPRatingFactory.wrapRatingWithLink(rating, ratingRequest));
       } else {
