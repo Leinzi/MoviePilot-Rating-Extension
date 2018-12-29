@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.3.0
+// @version       3.3.1
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -410,7 +410,7 @@ Rating.movieAliases = movieData[0];
 Rating.movieYear = movieData[1];
 Rating.correctness = {PERFECT: 0, GOOD: 1, OKAY: 2, BAD: 3, POOR: 4};
 
-let tmdbRating = new Rating().ratingSite('TMDB').ratingSiteAbbr('TMDB').ratingId('tmdb').ratingDivId(C_ID_TMDBRATING).websiteURL('https://www.themoviedb.org/movie/').scrapperFunction(tmdbRatingScrapper).responseSiteHookFunction(collectEnglishMovieTitles).numberOfResultsIncluded(10).blacklist(new RegExp(/\s?TMDb$/i)).blacklist(new RegExp(/(?:(?=The Movie Database)The Movie Database|(?=The Movie)The Movie|(?=The)The)$/i)).blacklist(new RegExp(/Recommended Movies/i)).urlRegEx(REG_EX_TMDB).languageModifier('en');
+let tmdbRating = new Rating().ratingSite('TMDB').ratingSiteAbbr('TMDB').ratingId('tmdb').ratingDivId(C_ID_TMDBRATING).websiteURL('https://www.themoviedb.org/movie/').scrapperFunction(tmdbRatingScrapper).responseSiteHookFunction(collectMovieTitleFromTMDB).numberOfResultsIncluded(10).blacklist(new RegExp(/\s?TMDb$/i)).blacklist(new RegExp(/(?:(?=The Movie Database)The Movie Database|(?=The Movie)The Movie|(?=The)The)$/i)).blacklist(new RegExp(/Recommended Movies/i)).urlRegEx(REG_EX_TMDB).languageModifier('en');
 let imdbRating = new Rating().ratingSite('IMDB').ratingSiteAbbr('IMDB').ratingRange('10').ratingId('imdb').ratingDivId(C_ID_IMDBRATING).websiteURL('www.imdb.com/title').scrapperFunction(imdbRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/IMDb$/i)).blacklist(new RegExp(/TV Movie/i)).urlRegEx(REG_EX_IMDB);
 let rtRating = new Rating().ratingSite('rotten tomatoes').ratingSiteAbbr('RT').ratingId('rt').ratingDivId(C_ID_RTRATINGS).websiteURL('www.rottentomatoes.com/m/').scrapperFunction(rtRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/(?:(?=Rotten Tomatoes)Rotten Tomatoes|(?=Rotten)Rotten)$/i)).blacklist(new RegExp(Rating.movieYear+ " Original", "i")).urlRegEx(REG_EX_RT);
 let mcRating = new Rating().ratingSite('metacritic').ratingSiteAbbr('MC').ratingId('mc').ratingDivId(C_ID_MCRATINGS).websiteURL('www.metacritic.com/movie/').scrapperFunction(mcRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/Metacritic$/i)).blacklist(new RegExp(/Reviews/i)).urlRegEx(REG_EX_MC);
@@ -441,60 +441,25 @@ function startOtherRatings() {
   MPExtension.startRatingSearch();
 }
 
-function collectEnglishMovieTitles(tmdbResponse) {
+function collectMovieTitleFromTMDB(tmdbResponse) {
 /* Hooked function for translating german movie titles into english. Results in better google results */
   if (DEBUG_MODE) {
     console.log("MP-R-Ext: TMDB: Collecting movie titles.");
   }
 
-  //query english titles
-  let titles = [];
-  let length;
-  let match;
-  let country;
-  let type;
-
   // default page
-  let titleDiv = tmdbResponse.querySelector("div.title > span > a > h2");
+  let titleDiv = tmdbResponse.querySelector("div.title h2");
   if (titleDiv !== null) {
-    let title = titleDiv.childNodes[0].nodeValue
-    length = Rating.movieAliases.length;
-    match = Refinery.refineString(title);
-    prependStringToSet(Rating.movieAliases, Refinery.refineString(match));
-    moveStringToFirstPosition(Rating.movieAliases, Refinery.refineString(match));
+    let length = Rating.movieAliases.length
+    let title = Refinery.refineString(titleDiv.innerText);
+
+    prependStringToSet(Rating.movieAliases, title)
+
     if (length < Rating.movieAliases.length) {
-      MPExtension.addTitleToMP(match);
+      MPExtension.addTitleToMP(title);
     }
   }
 
-  // release-info page
-  let titleSpan = tmdbResponse.querySelector("span[itemprop=name]");
-  if (titleSpan !== null) {
-    match = titleSpan.innerHTML;
-    length = Rating.movieAliases.length;
-    prependStringToSet(Rating.movieAliases, Refinery.refineString(match));
-    moveStringToFirstPosition(Rating.movieAliases, Refinery.refineString(match));
-    if (length < Rating.movieAliases.length) {
-      MPExtension.addTitleToMP(match);
-    }
-  }
-
-  let table = tmdbResponse.querySelectorAll("table.new > tbody");
-  if (table !== null && table.length >= 2) {
-    table = table[1];
-    for (let i = 0; i < table.children.length; i++) {
-      country = table.children[i].children[2].innerHTML;
-      type = table.children[i].children[1].innerHTML;
-      if (country == "US" && (type == "" || type == "short title" || type =="Modern Title")) {
-        match = table.children[i].children[0].innerHTML;
-        length = Rating.movieAliases.length;
-        appendStringToSet(Rating.movieAliases, Refinery.refineString(match));
-        if (length < Rating.movieAliases.length) {
-          MPExtension.addTitleToMP(match);
-        }
-      }
-    }
-  }
   startOtherRatings(); // start rating search
 }
 
@@ -988,6 +953,8 @@ function prependStringToSet(array, string) {
   let regEx = new RegExp("^" + string + "$", "i");
   if (!array.reMatch(regEx)) {
     array.unshift(string);
+  } else {
+    moveStringToFirstPosition(array, string)
   }
 }
 
