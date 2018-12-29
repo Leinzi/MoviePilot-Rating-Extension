@@ -50,7 +50,7 @@ const VERBOSE = true;
 const REG_EX_TMDB = /(https?:\/\/)?www\.themoviedb\.org\/movie\/.*?(?=(\?|\/))/
 const REG_EX_IMDB = /(https?:\/\/)?www\.imdb\.com\/title\/.*?(?=(\?|\/))/
 const REG_EX_MC = /(https?:\/\/)?www\.metacritic\.com\/movie\/.*?(?=(\?|\/))/
-const REG_EX_RT = /(https?:\/\/)?www\.rottentomatoes\.com\/m\/.*?(?=(\?|\/))/);
+const REG_EX_RT = /(https?:\/\/)?www\.rottentomatoes\.com\/m\/.*?(?=(\?|\/))/
 
 
 //-------Helper---------------
