@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.3.1
+// @version       3.3.3
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -392,27 +392,56 @@ class MPRatingFactory {
   }
 }
 
+class Movie {
+
+  /* Get important information from the MP website: Movie titles, year */
+  static collectMovieData() {
+    Movie.aliases = []
+    let movieHeadline = document.querySelector('h1.movie--headline');
+    let movieData = document.querySelector('h2.movie--data');
+    let yearSpan = document.querySelector('a[href*="/filme/beste/jahr-"] span')
+
+    if (movieHeadline === null || movieData === null || yearSpan === null) {
+      if (DEBUG_MODE) {
+        console.log("MP-R-Ext: Function getMovieData. Structure changed.");
+      }
+      return null;
+    }
+
+    appendStringToSet(Movie.aliases, Refinery.refineString(movieHeadline.innerText)); //MP movie title
+    Movie._getMovieAliases(movieData.innerText).forEach(function(currentValue) {
+      console.log("next: " + currentValue)
+      appendStringToSet(Movie.aliases, Refinery.refineString(currentValue));
+    }); //MP alternative titles
+
+    Movie.year = parseInt(yearSpan.innerText.match(/\d\d\d\d/)[0]);
+  }
+
+  /* Get movie aliases from a string */
+  static _getMovieAliases(aliasString) {
+    return aliasString.split(/\s?\/\sAT:\s?|\s?;\s?|\s?\/\s?/g) // Usual delimiters are '\ AT:', ';' and '/'
+  }
+}
+
 // var Refinery = new Refinery();
 // var MPRatingFactory = new MPRatingFactory();
 var MPExtension = new MPExtension();
 
 if (!MPExtension.setupExtension()) {
-        return false;
+  return false;
 }
 
-let movieData = MPExtension.getMovieData(); //Search MP for information
-if (movieData === null ) {
-        return false;
+// Search MP for information
+if (Movie.collectMovieData() === null ) {
+  return false;
 }
 
 // Static variables shared by all instances of Rating
-Rating.movieAliases = movieData[0];
-Rating.movieYear = movieData[1];
 Rating.correctness = {PERFECT: 0, GOOD: 1, OKAY: 2, BAD: 3, POOR: 4};
 
 let tmdbRating = new Rating().ratingSite('TMDB').ratingSiteAbbr('TMDB').ratingId('tmdb').ratingDivId(C_ID_TMDBRATING).websiteURL('https://www.themoviedb.org/movie/').scrapperFunction(tmdbRatingScrapper).responseSiteHookFunction(collectMovieTitleFromTMDB).numberOfResultsIncluded(10).blacklist(new RegExp(/\s?TMDb$/i)).blacklist(new RegExp(/(?:(?=The Movie Database)The Movie Database|(?=The Movie)The Movie|(?=The)The)$/i)).blacklist(new RegExp(/Recommended Movies/i)).urlRegEx(REG_EX_TMDB).languageModifier('en');
 let imdbRating = new Rating().ratingSite('IMDB').ratingSiteAbbr('IMDB').ratingRange('10').ratingId('imdb').ratingDivId(C_ID_IMDBRATING).websiteURL('www.imdb.com/title').scrapperFunction(imdbRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/IMDb$/i)).blacklist(new RegExp(/TV Movie/i)).urlRegEx(REG_EX_IMDB);
-let rtRating = new Rating().ratingSite('rotten tomatoes').ratingSiteAbbr('RT').ratingId('rt').ratingDivId(C_ID_RTRATINGS).websiteURL('www.rottentomatoes.com/m/').scrapperFunction(rtRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/(?:(?=Rotten Tomatoes)Rotten Tomatoes|(?=Rotten)Rotten)$/i)).blacklist(new RegExp(Rating.movieYear+ " Original", "i")).urlRegEx(REG_EX_RT);
+let rtRating = new Rating().ratingSite('rotten tomatoes').ratingSiteAbbr('RT').ratingId('rt').ratingDivId(C_ID_RTRATINGS).websiteURL('www.rottentomatoes.com/m/').scrapperFunction(rtRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/(?:(?=Rotten Tomatoes)Rotten Tomatoes|(?=Rotten)Rotten)$/i)).blacklist(new RegExp(Movie.year + " Original", "i")).urlRegEx(REG_EX_RT);
 let mcRating = new Rating().ratingSite('metacritic').ratingSiteAbbr('MC').ratingId('mc').ratingDivId(C_ID_MCRATINGS).websiteURL('www.metacritic.com/movie/').scrapperFunction(mcRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/Metacritic$/i)).blacklist(new RegExp(/Reviews/i)).urlRegEx(REG_EX_MC);
 let wikiInfo = new Rating().ratingSite('Wikipedia').ratingSiteAbbr('wiki').ratingId('wiki').ratingDivId(C_ID_WIKIINFO).websiteURL('en.wikipedia.org').info().description('The Free Encyclopedia').numberOfResultsIncluded(5).blacklist(new RegExp(/(film)?\s*(?:(?=Wikipedia the free encyclopedia)Wikipedia the free encyclopedia|(?=Wikipedia the free)Wikipedia the free|(?=Wikipedia)Wikipedia)$/i)).googleRequestModifier(wikiRequestModifier);
 
@@ -450,12 +479,12 @@ function collectMovieTitleFromTMDB(tmdbResponse) {
   // default page
   let titleDiv = tmdbResponse.querySelector("div.title h2");
   if (titleDiv !== null) {
-    let length = Rating.movieAliases.length
+    let length = Movie.aliases.length
     let title = Refinery.refineString(titleDiv.innerText);
 
-    prependStringToSet(Rating.movieAliases, title)
+    prependStringToSet(Movie.aliases, title)
 
-    if (length < Rating.movieAliases.length) {
+    if (length < Movie.aliases.length) {
       MPExtension.addTitleToMP(title);
     }
   }
@@ -600,7 +629,7 @@ function MPExtension() {
       let atTitles = movieData[0];
       atTitles.children[0].style.display = "inline-block";
 
-      tmdbTitles = document.createElement("div");
+      let tmdbTitles = document.createElement("div");
       tmdbTitles.style.display = "inline-block";
       tmdbTitles.id = "tmdbTitles";
 
@@ -774,44 +803,9 @@ function MPExtension() {
     return label;
   }
 
-  this.getMovieData = function() {
-  /* Get important inforation from the MP website: Movie titles, year */
-    let movieHeadline = document.getElementsByClassName('movie--headline');
-    let movieData = document.getElementsByClassName('movie--data');
-    let movieDataClearfix = document.getElementsByClassName('movie--data clearfix');
 
-    if (movieHeadline === null || movieData === null || movieDataClearfix === null) {
-      if (DEBUG_MODE) {
-        console.log("MP-R-Ext: Function getMovieData. Structure changed.");
-      }
-      return null;
-    }
 
-    let titles = [];
-    appendStringToSet(titles, Refinery.refineString(movieHeadline[0].innerHTML)); //MP movie title
-    getMovieAliases(movieData[0].children[0].innerHTML).forEach(function(currentValue, index, array) {
-      appendStringToSet(titles, Refinery.refineString(currentValue));
-    }); //MP alternative titles
 
-    let year;
-    let i = 0;
-    do{	//Fetch movie year
-      i++;
-      if (movieDataClearfix[0].children[i] !== undefined) {
-        year = movieDataClearfix[0].children[i].innerHTML.match(/\d\d\d\d/);
-      }
-    } while (year === null && i < 5);
-    if (year === null) {
-      year = "";
-    }
-    return [titles, year];
-  };
-
-  function getMovieAliases(aliasString) {
-  /* Get movie aliases from a string */
-    let aliases = aliasString.split(/\s?\/\sAT:\s?|\s?;\s?|\s?\/\s?/g); // Usual delimiters are '\ AT:', ';' and '/'
-    return aliases;
-  };
 
   this.addRatingToContainer = function(ratingAbbr, ratingObject) {
   /* Append a rating to its container
@@ -965,7 +959,7 @@ function moveStringToFirstPosition(array, string) {
   if (index > 0) {
     let swap = array[0];
     array[0] = string;
-    array[i-1] = swap;
+    array[index-1] = swap;
   }
 }
 
@@ -986,8 +980,7 @@ function Rating () {
   let googleRequest="";
   let googleRequestModifier = function(url) {return url;}; 	//Modify Googles request URL
   let ratingRequest="";
-  // let ratingRequestModifier = function(url) {return url;};	//Modify the request URL of the rating website
-  // let ratingLinkModifier = function(url) {return url;}; // Modify the Link to the rating website
+
   let ratingSourceTypes = {EXTERN: 0, GOOGLE: 1, INFO:2};		//Type of the rating; EXTERN for own rating scrapper, GOOGLE for standard Google scrapper, INFO for a information website without rating
   let ratingSourceType = ratingSourceTypes.EXTERN;		//Current type of the rating
   let numberOfResultsIncluded = 1;	//Number of Google results that should be included in a search
@@ -1002,11 +995,9 @@ function Rating () {
   let languageModifier = null
 
   let callback;
-  const SEARCH_GOOGLE_RESULT_INFO = false;	//Search Googles infos to a result for matches too
   const LINK_WEBSITES = true;	//Link the websites
   const LET_ME_GOOGLE_THAT = true;	//Link the Google request if a search is failing
   const REQ_TIMEOUT = 10000;
-  const REQ_SYNCHRONOUS = false;
 
   this.ratingSite = function(string) {ratingSite = string; return this;};
   this.ratingSiteAbbr = function(string) {ratingSiteAbbr = string; return this;};
@@ -1016,8 +1007,7 @@ function Rating () {
   this.ratingDivId = function(string) {ratingDivId = string; return this;};
   this.websiteURL = function(string) {websiteURL = string; return this;};
   this.googleRequestModifier = function(func) {googleRequestModifier = func; return this;};
-  // this.ratingRequestModifier = function(func) {ratingRequestModifier = func; return this;};
-  // this.ratingLinkModifier = function(func) {ratingLinkModifier = func; return this;};
+
   this.externRating = function() {ratingSourceType = ratingSourceTypes.EXTERN; return this;};
   this.googleRating = function() {ratingSourceType = ratingSourceTypes.GOOGLE; return this;};
   this.info = function() {ratingSourceType = ratingSourceTypes.INFO; return this;};
@@ -1039,7 +1029,7 @@ function Rating () {
 
   this.getRating = function() {
   /* Kick off the search */
-    googleRequest = "https://www.google.de/search?q=site:"+websiteURL+"+"+Rating.movieAliases[0].replace(/ /g,"+")+((Rating.movieYear !== '') ? "+"+Rating.movieYear : '');
+    googleRequest = "https://www.google.de/search?q=site:" + websiteURL + "+" + Movie.aliases[0].replace(/ /g,"+") + ((Movie.year !== '') ? "+" + Movie.year : '');
     googleRequest = googleRequestModifier(googleRequest);
     googleRequest = Refinery.encode(googleRequest);
     if (DEBUG_MODE) {
@@ -1133,7 +1123,7 @@ function Rating () {
     let correctnessIndicator = 0;
     let spamIndicator = 0;
     let googleResultURLs = [];
-    let movieAliases = Rating.movieAliases;
+    let movieAliases = Movie.aliases;
 
     if (DEBUG_MODE && VERBOSE) {
       log(googleResults.length + " results found. " + numberOfResultsIncluded + " results included.");
@@ -1147,16 +1137,13 @@ function Rating () {
       let url = link.href;
       let infoDiv = "";
 
-      if (!excludeUnplausibleYear || title.search(Rating.movieYear) > 0) {
-        if (SEARCH_GOOGLE_RESULT_INFO) {
-          infoDiv = currentResult.getElementsByClassName("st")[0].outerHTML;
-        }
+      if (!excludeUnplausibleYear || title.search(Movie.year) > 0) {
         title = Refinery.refineString(title)
         let regExp;
         for (let l = 0; l < blacklistedStrings.length; l++) { //delete unwanted strings
           title = title.replace(blacklistedStrings[l], '');
         }
-        title = title.replace(Rating.movieYear, '');
+        title = title.replace(Movie.year, '');
         title = Refinery.refineString(title);
         let titleSplits = title.split(' ');
 
@@ -1170,7 +1157,7 @@ function Rating () {
           // Heuristic - at least half of the movie titles words have to be found in a result
           for (let i = 0; i < movieAliasSplits.length; i++) {
             let regExp = new RegExp('(^|\\s|>)'+movieAliasSplits[i]+'(\\s|$)', 'i');
-            if (titleSplits.reMatch(regExp) || (SEARCH_GOOGLE_RESULT_INFO && infoDiv.search(regExp) >= 0)) {
+            if (titleSplits.reMatch(regExp)) {
               foundCounter++;
             }
           }
@@ -1244,48 +1231,33 @@ function Rating () {
   * request      Ziel-URL mit Request
   * source       Anzeige-Information
   */
-    if (this.REQ_SYNCHRONOUS) {  //synchronous or asynchronous
-      let response = GM.xmlHttpRequest({
-      	method: 'GET',
-      	url: request,
-      	synchronous: this.REQ_SYNCHRONOUS,
-      	timeout: this.REQ_TIMEOUT,
-      	ontimeout: function(response) {console.log("Timeout(MP-Rating-Extension):  "+request);}
-      });
-      if (response.status == 200) {
-      	ratingObject.callback(request, response);
-      } else {
-      	alert("Error: No synchornous operation.");
-      }
-    } else {
-      GM.xmlHttpRequest({
-        method: 'GET',
-        url: request,
-        synchronous: this.REQ_SYNCHRONOUS,
-        timeout: this.REQ_TIMEOUT,
-        onreadystatechange: function(response) {
-          if (response.readyState == 4) {
-            if (response.status == 200) { //Successfull request
-              callback(request, response);
-            } else if (response.status >= 500 && response.status < 600) { //Server error
-              let rating = null;
-              if (DEBUG_MODE) {
-                log("ERROR: Status-Code: " + response.status)
-              }
-              MPExtension.appendNewContainer('google');
-              rating = MPRatingFactory.wrapRatingWithLink(MPRatingFactory.buildInfo('Google blocked','Click and enter captcha to unlock', 'google'), request);
-              MPExtension.addRatingToContainer('google', rating);
-            } else { //Default error
-              if (DEBUG_MODE) {
-                log("ERROR: Status-Code: " + response.status)
-              }
-              rating = MPRatingFactory.getErrorRating(ratingSite, ratingRange, ratingDivId);
-              MPExtension.addRatingToContainer(ratingId, rating);
-            }
+
+    GM.xmlHttpRequest({
+      method: 'GET',
+      url: request,
+      synchronous: false,
+      timeout: this.REQ_TIMEOUT,
+      onreadystatechange: function(response) {
+        if (response.readyState == 4) { return; }
+        if (response.status == 200) { //Successful request
+          callback(request, response);
+        } else if (response.status >= 500 && response.status < 600) { //Server error
+          if (DEBUG_MODE) {
+            log("ERROR: Status-Code: " + response.status)
           }
+          MPExtension.appendNewContainer('google');
+          let rating = MPRatingFactory.wrapRatingWithLink(MPRatingFactory.buildInfo('Google blocked','Click and enter captcha to unlock', 'google'), request);
+          MPExtension.addRatingToContainer('google', rating);
+        } else { //Default error
+          if (DEBUG_MODE) {
+            log("ERROR: Status-Code: " + response.status)
+          }
+          let rating = MPRatingFactory.getErrorRating(ratingSite, ratingRange, ratingDivId);
+          MPExtension.addRatingToContainer(ratingId, rating);
         }
-      });
-    }
+      }
+    });
+
   }
 
   function parseToHTMLElement(html) {
@@ -1337,7 +1309,7 @@ function rtRatingScrapper(rtResponse, estCorrectness) {
   // Audience
   queryResult = rtResponse.querySelectorAll("div.audience-info > div");
   if ( queryResult.length >= 2) {
-    let audAvrRating   = queryResult[0].innerText.match(/\d\.?\d?/);
+    let audAvrRating = queryResult[0].innerText.match(/\d\.?\d?/);
     let audRatingCount = queryResult[1].innerText.match(/\d(\d|,|\.)*/);
     if (audAvrRating !== null && audRatingCount !== null) {
       audAvrRating = audAvrRating[0];
@@ -1398,7 +1370,7 @@ function tmdbRatingScrapper(tmdbResponse, estCorrectness) {
   let ratingSpan = tmdbResponse.querySelector("span[itemprop=ratingValue]");
   let ratingCountSpan = tmdbResponse.querySelector("span[itemprop=ratingCount]");
   if (ratingSpan !== null && ratingCountSpan !== null) {
-    rating =  ratingSpan.innerHTML;
+    rating = ratingSpan.innerHTML;
     ratingCount = ratingCountSpan.innerHTML;
   } else {
     //common movie page
@@ -1409,9 +1381,9 @@ function tmdbRatingScrapper(tmdbResponse, estCorrectness) {
   }
 
   if (rating !== null && ratingCount == null) {
-    tmdb_div = MPRatingFactory.buildRating(Refinery.refineRating(rating), 'TMDB', "-", 10, estCorrectness,  C_ID_TMDBRATING);
+    tmdb_div = MPRatingFactory.buildRating(Refinery.refineRating(rating), 'TMDB', "-", 10, estCorrectness, C_ID_TMDBRATING);
   } else if (rating !== null && ratingCount !== null) {
-    tmdb_div = MPRatingFactory.buildRating(Refinery.refineRating(rating), 'TMDB', Refinery.refineRatingCount(ratingCount), 10, estCorrectness,  C_ID_TMDBRATING);
+    tmdb_div = MPRatingFactory.buildRating(Refinery.refineRating(rating), 'TMDB', Refinery.refineRatingCount(ratingCount), 10, estCorrectness, C_ID_TMDBRATING);
   } else {
     tmdb_div = MPRatingFactory.getNotYetRating('TMDB', 10, estCorrectness, C_ID_TMDBRATING);
   }
@@ -1430,7 +1402,7 @@ function imdbRatingScrapper(imdbResponse, estCorrectness) {
   let ratingSpan = imdbResponse.querySelector("span[itemprop=ratingValue]");
   let ratingCountSpan = imdbResponse.querySelector("span[itemprop=ratingCount]");
   if (ratingSpan !== null && ratingCountSpan !== null) {
-    rating =  ratingSpan.innerHTML;
+    rating = ratingSpan.innerHTML;
     ratingCount = ratingCountSpan.innerHTML;
   } else {
     //common movie page
@@ -1441,9 +1413,9 @@ function imdbRatingScrapper(imdbResponse, estCorrectness) {
   }
 
   if (rating !== null && ratingCount == null) {
-    imdb_div = MPRatingFactory.buildRating(Refinery.refineRating(rating), 'IMDB', "-", 10, estCorrectness,  C_ID_IMDBRATING);
+    imdb_div = MPRatingFactory.buildRating(Refinery.refineRating(rating), 'IMDB', "-", 10, estCorrectness, C_ID_IMDBRATING);
   } else if (rating !== null && ratingCount !== null) {
-    imdb_div = MPRatingFactory.buildRating(Refinery.refineRating(rating), 'IMDB', Refinery.refineRatingCount(ratingCount), 10, estCorrectness,  C_ID_IMDBRATING);
+    imdb_div = MPRatingFactory.buildRating(Refinery.refineRating(rating), 'IMDB', Refinery.refineRatingCount(ratingCount), 10, estCorrectness, C_ID_IMDBRATING);
   } else {
     imdb_div = MPRatingFactory.getNotYetRating('IMDB', 10, estCorrectness, C_ID_IMDBRATING);
   }
@@ -1481,7 +1453,7 @@ function styleQuiteElement(element) {
 function getInfoFromLocalStorage(info) {
   if (typeof(Storage) !== "undefined") {
     let result = localStorage.getItem(info);
-    if (result === null) {  // not initialized
+    if (result === null) { // not initialized
       initializeLocalStorageFor(info);
       return true;
     } else if (result == 'true') {
@@ -1489,7 +1461,7 @@ function getInfoFromLocalStorage(info) {
     } else {
       return false;
     }
-  } else {  //  no local storage support, default values are used
+  } else { // no local storage support, default values are used
     return true;
   }
 }
