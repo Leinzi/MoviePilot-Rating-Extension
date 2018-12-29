@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.2.4
+// @version       3.2.5
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -142,7 +142,8 @@ class Refinery {
 
   static refineRating(rating) {
     /* Refine/standardize ratings */
-    let refinedRating = rating.match(/((\d\d+)|(\d\.?\d*))/)
+    rating = rating.replace(/(,)/g,'.');
+    let refinedRating = rating.match(/(\d(\.)?\d*)/)
     if (refinedRating !== null) {
       return refinedRating[0];
     } else {
@@ -404,7 +405,7 @@ Rating.movieYear = movieData[1];
 Rating.correctness = {PERFECT: 0, GOOD: 1, OKAY: 2, BAD: 3, POOR: 4};
 
 let tmdbRating = new Rating().ratingSite('TMDB').ratingSiteAbbr('TMDB').ratingId('tmdb').ratingDivId(C_ID_TMDBRATING).websiteURL('https://www.themoviedb.org/movie/').scrapperFunction(tmdbRatingScrapper).responseSiteHookFunction(collectEnglishMovieTitles).numberOfResultsIncluded(10).blacklist(new RegExp(/\s?TMDb$/i)).blacklist(new RegExp(/(?:(?=The Movie Database)The Movie Database|(?=The Movie)The Movie|(?=The)The)$/i)).blacklist(new RegExp(/Recommended Movies/i)).urlRegEx(REG_EX_TMDB).languageModifier('en');
-let imdbRating = new Rating().ratingSite('IMDB').ratingSiteAbbr('IMDB').ratingRange('10').ratingId('imdb').ratingDivId(C_ID_IMDBRATING).websiteURL('www.imdb.com/title').googleRating().numberOfResultsIncluded(5).blacklist(new RegExp(/IMDb$/i)).blacklist(new RegExp(/TV Movie/i)).urlRegEx(REG_EX_IMDB);
+let imdbRating = new Rating().ratingSite('IMDB').ratingSiteAbbr('IMDB').ratingRange('10').ratingId('imdb').ratingDivId(C_ID_IMDBRATING).websiteURL('www.imdb.com/title').scrapperFunction(imdbRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/IMDb$/i)).blacklist(new RegExp(/TV Movie/i)).urlRegEx(REG_EX_IMDB);
 let rtRating = new Rating().ratingSite('rotten tomatoes').ratingSiteAbbr('RT').ratingId('rt').ratingDivId(C_ID_RTRATINGS).websiteURL('www.rottentomatoes.com/m/').scrapperFunction(rtRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/(?:(?=Rotten Tomatoes)Rotten Tomatoes|(?=Rotten)Rotten)$/i)).blacklist(new RegExp(Rating.movieYear+ " Original", "i")).urlRegEx(REG_EX_RT);
 let mcRating = new Rating().ratingSite('metacritic').ratingSiteAbbr('MC').ratingId('mc').ratingDivId(C_ID_MCRATINGS).websiteURL('www.metacritic.com/movie/').scrapperFunction(mcRatingScrapper).numberOfResultsIncluded(5).blacklist(new RegExp(/Metacritic$/i)).blacklist(new RegExp(/Reviews/i)).urlRegEx(REG_EX_MC);
 let wikiInfo = new Rating().ratingSite('Wikipedia').ratingSiteAbbr('wiki').ratingId('wiki').ratingDivId(C_ID_WIKIINFO).websiteURL('en.wikipedia.org').info().description('The Free Encyclopedia').numberOfResultsIncluded(5).blacklist(new RegExp(/(film)?\s*(?:(?=Wikipedia the free encyclopedia)Wikipedia the free encyclopedia|(?=Wikipedia the free)Wikipedia the free|(?=Wikipedia)Wikipedia)$/i)).googleRequestModifier(wikiRequestModifier);
@@ -1429,6 +1430,38 @@ function tmdbRatingScrapper(tmdbResponse, estCorrectness) {
   }
 
   return tmdb_div;
+}
+
+function imdbRatingScrapper(imdbResponse, estCorrectness) {
+/* Rating-Scrapper for TheMovieDB */
+  let imdb_div;
+
+  let rating = null;
+  let ratingCount = null;
+
+  //release-info page
+  let ratingSpan = imdbResponse.querySelector("span[itemprop=ratingValue]");
+  let ratingCountSpan = imdbResponse.querySelector("span[itemprop=ratingCount]");
+  if (ratingSpan !== null && ratingCountSpan !== null) {
+    rating =  ratingSpan.innerHTML;
+    ratingCount = ratingCountSpan.innerHTML;
+  } else {
+    //common movie page
+    let ratingDiv = imdbResponse.querySelector("div.user_score_chart");
+    if (ratingDiv !== null) {
+      rating = ratingDiv.attributes[1].nodeValue;
+    }
+  }
+
+  if (rating !== null && ratingCount == null) {
+    imdb_div = MPRatingFactory.buildRating(Refinery.refineRating(rating), 'IMDB', "-", 10, estCorrectness,  C_ID_IMDBRATING);
+  } else if (rating !== null && ratingCount !== null) {
+    imdb_div = MPRatingFactory.buildRating(Refinery.refineRating(rating), 'IMDB', Refinery.refineRatingCount(ratingCount), 10, estCorrectness,  C_ID_IMDBRATING);
+  } else {
+    imdb_div = MPRatingFactory.getNotYetRating('IMDB', 10, estCorrectness, C_ID_IMDBRATING);
+  }
+
+  return imdb_div;
 }
 
 
