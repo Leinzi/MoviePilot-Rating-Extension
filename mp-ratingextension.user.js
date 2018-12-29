@@ -140,6 +140,14 @@ class Refinery {
     return refinedString;
   }
 
+  static removeSeparatorFromNumber(number) {
+    return number.toString().replace(/(\.|,)/g, '')
+  }
+
+  static convertLargeNumber(number) {
+    return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  }
+
   static refineRating(rating) {
     /* Refine/standardize ratings */
     rating = rating.replace(/(,)/g,'.');
@@ -153,10 +161,10 @@ class Refinery {
 
   static refineRatingCount(ratingCount) {
     /* Refine/standardize view counter */
-    let refinedRatingCount = ratingCount.replace(/(\.|,)/g,"");
+    let refinedRatingCount = Refinery.removeSeparatorFromNumber(ratingCount)
     refinedRatingCount = Refinery.trimWhitespaces(refinedRatingCount);
     if (refinedRatingCount.match(/^\d+$/)) {
-      return refinedRatingCount;
+      return Refinery.convertLargeNumber(refinedRatingCount);
     } else {
       return "0";
     }
@@ -260,7 +268,7 @@ class MPRatingFactory {
     styleWrapper(wrapper)
 
     if (getInfoFromLocalStorage(id)) {
-      wrapper.style.display = 'inline';
+      wrapper.style.display = 'flex';
     } else {
       wrapper.style.display = 'none';
     }
@@ -280,9 +288,7 @@ class MPRatingFactory {
   static _createInfo(title, description, descriptionExp) {
     let info = document.createElement('div');
     info.className = "quite";
-    info.style.margin  = "0px";
-    info.style.padding = "0px";
-    info.style.float = "left";
+    styleQuiteElement(info)
 
     let infoSource = document.createTextNode(title);
     info.appendChild(infoSource);
@@ -306,9 +312,9 @@ class MPRatingFactory {
     let tooltipText = "Matching correctness is: ";
     let estimationInfo = document.createElement('div');
     estimationInfo.className = "correctness";
-    estimationInfo.style.margin = "15px 10px 15px 0px";
-    estimationInfo.style.padding = "0px";
-    estimationInfo.style.float = "right";
+    estimationInfo.style.margin = "0 0 0 5px";
+    estimationInfo.style.padding = "0";
+    estimationInfo.style.flex = "0 0 20px";
 
     let circle = document.createElement('div');
     circle.style.width = "10px";
@@ -547,7 +553,8 @@ function MPExtension() {
     toggleContentButton.style.cursor = 'pointer';
 
     if (getInfoFromLocalStorage(C_SHOWRATINGS)) { //Ask local storage if the ratings should be visible and which text should be displayed
-      extRatingsDiv.style.display = 'inline';
+      extRatingsDiv.style.display = 'flex';
+      extRatingsDiv.style.flexWrap = 'wrap';
       toggleContentButton.innerHTML = 'Suche deaktivieren';
     } else {
       extRatingsDiv.style.display = 'none';
@@ -586,6 +593,7 @@ function MPExtension() {
   /* Modifies MPs structure - all ratings have to look alike... */
   function fixMPLayout() {
     let userAction = document.getElementsByClassName('movie_user_action');
+    let forecastCount = document.getElementsByClassName('forecastcount');
     let criticsCount = document.getElementsByClassName('criticscount');
     let contentCount = document.getElementsByClassName('contentcount');
     let huge = document.getElementsByClassName('huge');
@@ -598,7 +606,19 @@ function MPExtension() {
       return false;
     }
 
-    for (let wrapper of userAction) { styleWrapper(wrapper) }
+    for (let element of userAction) {
+      element.style.width = "calc(0.25 * 960px - 40px)";
+      element.style.margin = "10px 20px";
+      element.style.padding = "0";
+      element.style.float = "left";
+    }
+
+    for (let element of forecastCount) {
+      element.style.width = "calc(0.25 * 960px)";
+      element.style.padding = "10px 0 10px 20px";
+      element.style.margin = "0";
+    }
+
     for (let wrapper of criticsCount) { styleWrapper(wrapper) }
     for (let wrapper of contentCount) { styleWrapper(wrapper) }
     for (let element of huge) { styleValueElement(element) }
@@ -769,10 +789,10 @@ function MPExtension() {
         } else {
           let element = document.getElementById(id);
           if (element !== null) {
-            element.style.display = 'inline';
+            element.style.display = 'flex';
           } else {
             element = document.getElementById(parent);
-            element.style.display = 'inline';
+            element.style.display = 'flex';
           }
         }
       } else {
@@ -1466,24 +1486,27 @@ function imdbRatingScrapper(imdbResponse, estCorrectness) {
 
 
 function styleWrapper(wrapper) {
-  wrapper.style.width = "180px";
-  wrapper.style.margin = "0px 25px 0px 25px";
-  wrapper.style.padding = "0px";
+  wrapper.style.width = "calc(0.25 * 960px - 40px)";
+  wrapper.style.margin = "10px 20px";
+  wrapper.style.padding = "0";
   wrapper.style.float = "left";
+  wrapper.style.display = "flex";
+  wrapper.style.alignItems = "center";
 }
 
 function styleValueElement(element) {
-  element.style.width = "35px";
-  element.style.margin = "10px 3px 0px 0px";
-  element.style.padding = "0px";
-  element.style.float = "left";
+  element.style.flex = "0 0 40px";
+  element.style.margin = "0";
+  element.style.padding = "0";
   element.style.textAlign = "center";
+  element.style.top = "0";
 }
 
 function styleQuiteElement(element) {
-  element.style.margin = "0px";
-  element.style.padding = "0px";
-  element.style.float = "left";
+  element.style.flex = "1 1 auto";
+  element.style.margin = "0 5px";
+  element.style.padding = "0";
+  element.style.float = "none";
 }
 
 //-----LOCALSTORAGE-ADAPTER------------
