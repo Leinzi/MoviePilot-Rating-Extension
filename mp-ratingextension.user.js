@@ -20,7 +20,7 @@
 //
 // ==UserScript==
 // @name          MoviePilot Rating-Extension
-// @version       3.3.4
+// @version       3.3.5
 // @downloadURL   https://github.com/Leinzi/MoviePilot-Rating-Extension/raw/master/mp-ratingextension.user.js
 // @namespace     https://www.moviepilot.de/movies/*
 // @description   Script, mit dem die Bewertungen von IMDb und anderen Plattformen ermittelt und angezeigt werden sollen
@@ -1162,7 +1162,7 @@ function Rating () {
           }
           correctnessIndicator = Math.round((foundCounter/movieAliasSplits.length)*100)/100;
           spamIndicator = Math.round((foundCounter/titleSplits.length)*100)/100;
-          if (url.search(websiteURL) >= 0 && correctnessIndicator >= 0.5 && spamIndicator >= 0.5) { //Threshold for accepted results
+          if (k === 0 || (url.search(websiteURL) >= 0 && correctnessIndicator >= 0.5 && spamIndicator >= 0.5)) { //Threshold for accepted results
             if (DEBUG_MODE && VERBOSE) {
               log("Result "+(k+1)+" matched. Correct: "+correctnessIndicator+" Spam: "+spamIndicator);
             }
